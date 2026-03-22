@@ -43,6 +43,15 @@ Tab                 focus peer list  (↑/↓ navigate, Enter select, Esc cancel
 ↑ / ↓              command history (when input focused)
 PgUp / PgDn        scroll chat"""
 
+    _SU_HELP = """\
+/kick <peer>                 disconnect a peer from the server
+/ban <peer>                  kick + revoke pubkey from allowlist
+/unban <peer>                re-add a previously banned peer
+/allow <peer>                pre-approve a pubkey
+/who                         list connected peers with details
+/server-password <new>       rotate the server password
+/server-mode <mode>          switch auth mode (open/password/allowlist)"""
+
     # ------------------------------------------------------------------
     # Input helpers
     # ------------------------------------------------------------------
@@ -64,6 +73,10 @@ PgUp / PgDn        scroll chat"""
         elif cmd == "/help":
             for line in self._HELP.splitlines():
                 self._system(line)
+            if getattr(self, "is_su", False):
+                self._system("--- su commands ---")
+                for line in self._SU_HELP.splitlines():
+                    self._system(line)
 
         elif cmd == "/themes":
             self._system("Available themes: " + "  ".join(list_themes()))
