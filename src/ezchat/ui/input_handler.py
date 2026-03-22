@@ -26,6 +26,7 @@ class InputMixin:
 /themes                      list available themes
 /ai <prompt>                 ask the AI; response sent to current conversation
 /ai-peer                     forward the last peer message to the AI
+/accept [peer]               accept a new or key-changed peer (default: current peer)
 /clear                       clear chat history
 /quit  (or /q)               exit ezchat
 /channel create <name>       create a new channel
@@ -75,6 +76,18 @@ PgUp / PgDn        scroll chat"""
 
         elif cmd == "/channel":
             self._handle_channel_command(arg)
+
+        elif cmd == "/accept":
+            peer = arg.strip().lstrip("@") or self.active_peer
+            if not peer:
+                self._error("Usage: /accept <peer>  (or select a peer first)")
+                return
+            status = self.peer_key_status.get(peer)
+            if status in ("new", "changed"):
+                self.peer_key_status.pop(peer, None)
+                self._system(f"Accepted {peer}")
+            else:
+                self._error(f"{peer} has no pending key alert")
 
         elif cmd == "/clear":
             self.messages.clear()

@@ -232,7 +232,10 @@ class UI(DrawMixin, InputMixin):
                     key_status = item[3] if len(item) > 3 else "known"
                     if fp:
                         self.peer_fingerprints[text] = fp
-                    self.peer_key_status[text] = key_status
+                    # Don't downgrade "new"/"changed" to "known" on reconnect
+                    prev = self.peer_key_status.get(text)
+                    if prev not in ("new", "changed") or key_status != "known":
+                        self.peer_key_status[text] = key_status
                     if text not in self.agent_peers:
                         if not any(h == text for h, _ in self.peers):
                             self.peers.append((text, True))
