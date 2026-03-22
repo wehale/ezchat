@@ -146,7 +146,14 @@ class DrawMixin:
         self.pw.erase()
         focused     = self.focus == "presence"
         border_attr = self.theme.accent if focused else self.theme.border
-        panel_title = f"# {self.view}" if self.view != "top" else "peers"
+        registry_servers = getattr(self, "registry_servers", [])
+        connected_server = getattr(self, "connected_server", "")
+        if self.view != "top":
+            panel_title = f"# {self.view}"
+        elif registry_servers and not connected_server:
+            panel_title = "registry"
+        else:
+            panel_title = "peers"
         self._draw_border(self.pw, panel_title, attr=border_attr)
         h, w = self.pw.getmaxyx()
         inner_w = w - 4
