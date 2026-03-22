@@ -234,6 +234,18 @@ class UI(DrawMixin, InputMixin):
                 elif sender == "__peer_offline__":
                     self.peers = [(h, False if h == text else on)
                                   for h, on in self.peers]
+                    # Remove channels where this peer was the only non-local member
+                    to_remove = [
+                        name for name, ch in self.channels.items()
+                        if text in ch.members
+                        and all(m == self.handle or m == text for m in ch.members)
+                    ]
+                    for name in to_remove:
+                        del self.channels[name]
+                        if self.view == name:
+                            self.view = "top"
+                            self.active_peer = ""
+                            self.scroll = 0
 
                 elif sender == "__peer_is_agent__":
                     self.peers = [(h, on) for h, on in self.peers if h != text]
