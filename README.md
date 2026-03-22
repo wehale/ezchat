@@ -18,7 +18,13 @@ cd ezchat
 pip install -e .
 ```
 
-Requires Python 3.11+.
+Requires Python 3.11+. If using [uv](https://github.com/astral-sh/uv):
+
+```bash
+git clone https://github.com/wehale/ezchat.git
+cd ezchat
+uv run ezchat --handle yourname
+```
 
 ---
 
@@ -131,6 +137,7 @@ EZCHAT_HOME=~/.ezchat-work ezchat --handle workme --listen 9000
 |---------|-------------|
 | `/help` | Show all commands |
 | `/ai <prompt>` | Ask the AI; response shown to all peers in the current conversation |
+| `/ai-peer` | Forward the last peer message to your local AI |
 | `/theme <name>` | Switch theme |
 | `/themes` | List available themes |
 | `/channel create <name>` | Create a channel |
@@ -167,7 +174,13 @@ ollama pull gemma3:4b
 
 AI context is shared between peers — if alice asks a question and bob follows up, the AI sees the full conversation history.
 
+`/ai-peer` is a shortcut that grabs the last message from your peer and forwards it to your AI automatically — useful for getting a quick response to something they said without retyping it.
+
+Each person's `/ai` runs against their own local model. If a peer doesn't have Ollama set up, `/ai` won't work for them — but they can still see your AI responses in the conversation.
+
 For cloud AI, point `base_url` at any OpenAI-compatible endpoint and set `api_key`.
+
+**WSL2 note:** if Ollama is running on Windows, set `OLLAMA_HOST=0.0.0.0` before starting it and point `base_url` at the Windows host IP (find it with `ip route | grep default | awk '{print $3}'`).
 
 ---
 
