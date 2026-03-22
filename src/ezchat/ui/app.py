@@ -235,6 +235,9 @@ class UI(DrawMixin, InputMixin):
                     self.peers = [(h, False if h == text else on)
                                   for h, on in self.peers]
 
+                elif sender == "__peer_is_agent__":
+                    self.peers = [(h, on) for h, on in self.peers if h != text]
+
                 elif sender == "__channel_join__":
                     if text not in self.channels:
                         self.channels[text] = Channel(name=text, members=[self.handle])

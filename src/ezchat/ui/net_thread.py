@@ -78,6 +78,7 @@ def net_thread(ui, args, stop: threading.Event) -> None:
                     ui.inbox.put(("system_event",
                                   f"invited to #{ch_name} by {conn.peer_handle}"))
                     ui.inbox.put(("__channel_join__", ch_name))
+                    ui.inbox.put(("__peer_is_agent__", conn.peer_handle))
                 else:
                     ts     = frame.get("ts", "")
                     ed_sig = frame.get("ed_sig", "")
