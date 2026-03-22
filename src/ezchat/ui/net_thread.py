@@ -254,6 +254,13 @@ def net_thread(ui, args, stop: threading.Event) -> None:
                 "warning: rendezvous registration failed"))
 
         conn_queue: asyncio.Queue = asyncio.Queue()
+        _mesh_tasks: set[asyncio.Task] = set()
+
+        def _spawn(coro, *, name: str | None = None) -> asyncio.Task:
+            t = asyncio.create_task(coro, name=name)
+            _mesh_tasks.add(t)
+            t.add_done_callback(_mesh_tasks.discard)
+            return t
 
         # Direct TCP listener
         if listen_port:
@@ -291,23 +298,23 @@ def net_thread(ui, args, stop: threading.Event) -> None:
                     ui.inbox.put(("system_event", f"relay error: {exc}"))
                     await asyncio.sleep(_RETRY_DELAY)
 
-        relay_task = asyncio.create_task(_relay_listen_loop(), name="relay-listen")
+        relay_task = _spawn(_relay_listen_loop(), name="relay-listen")
 
         # Drain accepted connections as tasks
         async def _accept_loop() -> None:
             while not stop.is_set():
                 try:
                     conn = await asyncio.wait_for(conn_queue.get(), timeout=1.0)
-                    asyncio.create_task(_handle_conn(conn))
+                    _spawn(_handle_conn(conn))
                 except asyncio.TimeoutError:
                     pass
 
-        accept_task = asyncio.create_task(_accept_loop(), name="accept-loop")
+        accept_task = _spawn(_accept_loop(), name="accept-loop")
 
         # Connect to all currently online peers
         existing = await rdv.peers()
         for peer in existing:
-            asyncio.create_task(
+            _spawn(
                 _connect_to_peer(peer["handle"], peer.get("endpoint"), rdv),
                 name=f"connect-{peer['handle']}",
             )
@@ -323,23 +330,23 @@ def net_thread(ui, args, stop: threading.Event) -> None:
                         async with _connected_lock:
                             already = ph in _connected
                         if not already:
-                            asyncio.create_task(
+                            _spawn(
                                 _connect_to_peer(ph, peer.get("endpoint"), rdv),
                                 name=f"connect-{ph}",
                             )
                 except Exception:
                     pass
 
-        poll_task = asyncio.create_task(_poll_loop(), name="peer-poll")
+        poll_task = _spawn(_poll_loop(), name="peer-poll")
 
         try:
             await asyncio.Event().wait() if not stop.is_set() else None
             while not stop.is_set():
                 await asyncio.sleep(0.5)
         finally:
-            relay_task.cancel()
-            accept_task.cancel()
-            poll_task.cancel()
+            for t in list(_mesh_tasks):
+                t.cancel()
+            await asyncio.gather(*_mesh_tasks, return_exceptions=True)
             if tcp_server:
                 tcp_server.close()
             rdv.stop_keepalive()

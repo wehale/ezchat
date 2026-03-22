@@ -1,7 +1,13 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "WebSearch",
+      "WebFetch(domain:ifarchive.org)",
+      "WebFetch(domain:www.ifarchive.org)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:blog.zarfhome.com)",
+      "WebFetch(domain:raw.githubusercontent.com)"
     ]
   }
 }
