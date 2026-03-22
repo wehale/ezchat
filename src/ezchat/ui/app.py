@@ -69,6 +69,7 @@ class UI(DrawMixin, InputMixin):
         self.channels:          dict[str, Channel]     = {}
         self.agent_peers:       set[str]               = set()
         self.peer_fingerprints: dict[str, str]         = {}
+        self.peer_key_status:   dict[str, str]         = {}
 
         self.focus:       str = "input"
         self.peer_cursor: int = 0
@@ -227,9 +228,11 @@ class UI(DrawMixin, InputMixin):
                         self.outbox.put((ai_peer, f"\x00ai:a\x00{text}",      ai_channel))
 
                 elif sender == "__peer_online__":
-                    fp = item[2] if len(item) > 2 else ""
+                    fp         = item[2] if len(item) > 2 else ""
+                    key_status = item[3] if len(item) > 3 else "known"
                     if fp:
                         self.peer_fingerprints[text] = fp
+                    self.peer_key_status[text] = key_status
                     if text not in self.agent_peers:
                         if not any(h == text for h, _ in self.peers):
                             self.peers.append((text, True))

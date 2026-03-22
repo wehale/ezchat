@@ -74,14 +74,32 @@ def net_thread(ui, args, stop: threading.Event) -> None:
         _peer_queues[conn.peer_handle] = peer_q
 
         ui.inbox.put(("system_event", f"connected: {conn.peer_handle}"))
+
+        from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat as _PF
+        import base64 as _b64
+        _raw_pub    = conn.peer_ed_pub.public_bytes(Encoding.Raw, _PF.Raw)
+        fingerprint = _raw_pub[:4].hex()  # 8 hex chars, e.g. "a3f72eb1"
+
+        # Check key status BEFORE upsert so we can detect new vs changed vs known
+        try:
+            from ezchat.store.peers import load_peers as _lp
+            _rec = _lp().get(conn.peer_handle)
+            if _rec is None:
+                key_status = "new"
+            elif _b64.b64decode(_rec.ed25519_pub_b64) != _raw_pub:
+                key_status = "changed"
+            else:
+                key_status = "known"
+        except Exception:
+            key_status = "known"
+
         try:
             from ezchat.store import upsert_peer
             upsert_peer(conn.peer_handle, conn.peer_ed_pub, ip_hint="")
         except Exception as exc:
             ui.inbox.put(("system_event", f"warning: could not save peer: {exc}"))
 
-        fingerprint = conn.peer_ed_pub[:4].hex()  # 8 hex chars, e.g. "a3f72eb1"
-        ui.inbox.put(("__peer_online__", conn.peer_handle, fingerprint))
+        ui.inbox.put(("__peer_online__", conn.peer_handle, fingerprint, key_status))
 
         async def _send_loop() -> None:
             loop = asyncio.get_running_loop()

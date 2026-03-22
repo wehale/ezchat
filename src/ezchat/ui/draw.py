@@ -107,10 +107,13 @@ class DrawMixin:
                 rows.append((ch.key, f"# {name}", True))
         if self.peers:
             fps = getattr(self, "peer_fingerprints", {})
+            kst = getattr(self, "peer_key_status", {})
             rows.append(("\x00dm_header", "── direct ──", False))
             for handle, online in sorted(self.peers, key=lambda p: (not p[1], p[0])):
-                fp = fps.get(handle, "")
-                label = f"{handle} [{fp[:4]}]" if fp else handle
+                fp     = fps.get(handle, "")
+                status = kst.get(handle, "known")
+                pfx    = "⚠ " if status == "changed" else ("★ " if status == "new" else "")
+                label  = f"{pfx}{handle} [{fp[:4]}]" if fp else f"{pfx}{handle}"
                 rows.append((handle, label, online))
         return rows
 
@@ -155,7 +158,14 @@ class DrawMixin:
             elif is_scratch:
                 attr = self.theme.accent
             else:
-                attr = self.theme.online if online else self.theme.offline
+                kst    = getattr(self, "peer_key_status", {})
+                status = kst.get(key, "known")
+                if status == "changed":
+                    attr = self.theme.error
+                elif status == "new":
+                    attr = self.theme.accent
+                else:
+                    attr = self.theme.online if online else self.theme.offline
 
             badge    = f" [{self.unread[key]}]" if key in self.unread else ""
             dot      = "" if is_scratch or is_back else ("●" if online else "○")
