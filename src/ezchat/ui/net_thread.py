@@ -181,25 +181,21 @@ def net_thread(ui, args, stop: threading.Event) -> None:
             host, _, port_s = endpoint.rpartition(":")
             host = host or "127.0.0.1"
             port = int(port_s) if port_s.isdigit() else 9000
-            ui.inbox.put(("system_event",
-                f"trying direct connection to {peer_handle} ({host}:{port})…"))
-            try:
-                r, w = await asyncio.wait_for(
-                    asyncio.open_connection(host, port),
-                    timeout=_DIRECT_TIMEOUT,
-                )
-                from ezchat.net.handshake import do_handshake
-                from ezchat.net.connection import Connection
-                session, ph, pe = await do_handshake(r, w, identity)
-                conn = Connection(r, w, session, ph, identity, pe)
-            except Exception as exc:
-                ui.inbox.put(("system_event",
-                    f"direct failed ({exc}), trying relay…"))
+            if port:   # skip direct attempt for relay-only peers (port 0)
+                try:
+                    r, w = await asyncio.wait_for(
+                        asyncio.open_connection(host, port),
+                        timeout=_DIRECT_TIMEOUT,
+                    )
+                    from ezchat.net.handshake import do_handshake
+                    from ezchat.net.connection import Connection
+                    session, ph, pe = await do_handshake(r, w, identity)
+                    conn = Connection(r, w, session, ph, identity, pe)
+                except Exception:
+                    pass  # fall through to relay silently
 
         if conn is None:
             try:
-                ui.inbox.put(("system_event",
-                    f"connecting via relay to {peer_handle}…"))
                 r, w = await _relay_connect(relay_host, relay_port, peer_handle)
                 from ezchat.net.handshake import do_handshake
                 from ezchat.net.connection import Connection
@@ -207,7 +203,7 @@ def net_thread(ui, args, stop: threading.Event) -> None:
                 conn = Connection(r, w, session, ph, identity, pe)
             except Exception as exc:
                 ui.inbox.put(("system_event",
-                    f"relay connection to {peer_handle} failed: {exc}"))
+                    f"could not reach {peer_handle}: {exc}"))
                 async with _connected_lock:
                     _connected.discard(peer_handle)
                 return
