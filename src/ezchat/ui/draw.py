@@ -92,9 +92,10 @@ class DrawMixin:
         if self.view != "top":
             ch = self.channels.get(self.view)
             members = ch.members if ch else []
+            agent_peers = getattr(self, "agent_peers", set())
             rows = [(BACK_ENTRY, "../", True)]
             for handle in members:
-                if handle == self.handle:
+                if handle == self.handle or handle in agent_peers:
                     continue
                 online = any(h == handle and on for h, on in self.peers)
                 rows.append((handle, handle, online))
