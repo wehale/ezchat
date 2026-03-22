@@ -334,11 +334,11 @@ def _curses_main(stdscr: curses.window, args) -> None:
     from ezchat.ai.config import load_ui_config
     ui_cfg = load_ui_config()
 
-    theme_name = getattr(args, "theme", None) or ui_cfg.theme or "bbs"
+    theme_name = getattr(args, "theme", None) or ui_cfg.theme or "ansi_bbs"
     try:
         theme = set_theme(theme_name)
     except ValueError:
-        theme = set_theme("bbs")
+        theme = set_theme("ansi_bbs")
 
     handle = getattr(args, "handle", None) or ui_cfg.handle or "you"
     from ezchat.home import set_handle
