@@ -29,6 +29,8 @@ class InputMixin:
 /accept [peer]               accept a new or key-changed peer (default: current peer)
 /block [peer]                mark a peer as blocked (⊘)
 /unblock [peer]              remove blocked mark from a peer
+/servers                     refresh server list from registry
+/connect <name>              connect to a server by name
 /clear                       clear chat history
 /quit  (or /q)               exit ezchat
 /channel create <name>       create a new channel
@@ -110,6 +112,24 @@ PgUp / PgDn        scroll chat"""
             from ezchat.store.peers import set_peer_blocked
             set_peer_blocked(peer, False)
             self._system(f"Unblocked {peer}")
+
+        elif cmd == "/servers":
+            self.outbox.put(("__refresh_servers__", "", ""))
+            self._system("Refreshing server list...")
+
+        elif cmd == "/connect":
+            name = arg.strip()
+            if not name:
+                self._error("Usage: /connect <server-name>")
+                return
+            self.outbox.put(("__select_server__", name, ""))
+
+        elif cmd in ("/kick", "/ban", "/unban", "/who",
+                      "/server-password", "/server-mode", "/allow"):
+            if not getattr(self, "is_su", False):
+                self._error("Admin commands require su access (--su on localhost)")
+                return
+            self.outbox.put(("__admin_cmd__", cmd, arg))
 
         elif cmd == "/clear":
             self.messages.clear()
@@ -268,7 +288,8 @@ PgUp / PgDn        scroll chat"""
         if self.focus == "presence":
             rows       = self._presence_rows()
             selectable = [i for i, (k, _, _) in enumerate(rows)
-                          if not k.startswith("\x00ch_") and not k.startswith("\x00dm_")]
+                          if not k.startswith("\x00ch_") and not k.startswith("\x00dm_")
+                          and not k.startswith("\x00srv_")]
             if ch == curses.KEY_UP:
                 idx = selectable.index(self.peer_cursor) if self.peer_cursor in selectable else 0
                 self.peer_cursor = selectable[max(0, idx - 1)]
@@ -282,6 +303,11 @@ PgUp / PgDn        scroll chat"""
                 if key == BACK_ENTRY:
                     self.view        = "top"
                     self.peer_cursor = 0
+                elif key.startswith("\x00srv:"):
+                    server_name = key[5:]
+                    self.outbox.put(("__select_server__", server_name, ""))
+                    self.focus = "input"
+                    curses.curs_set(1)
                 elif key.startswith("#"):
                     self.view        = key[1:]
                     self.active_peer = key

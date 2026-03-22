@@ -21,11 +21,12 @@ server = []   # ezchat_server uses only core deps
 dev    = ["pytest", "pytest-asyncio"]
 
 [project.scripts]
-ezchat        = "ezchat.__main__:main"
-ezchat-server = "ezchat_server.__main__:main"
+ezchat          = "ezchat.__main__:main"
+ezchat-server   = "ezchat_server.__main__:main"
+ezchat-registry = "ezchat_registry.__main__:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/ezchat", "src/ezchat_server"]
+packages = ["src/ezchat", "src/ezchat_server", "src/ezchat_registry"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

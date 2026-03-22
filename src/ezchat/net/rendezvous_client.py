@@ -57,8 +57,17 @@ class RendezvousClient:
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
-    async def register(self, endpoint: str) -> bool:
-        """Register this identity's endpoint with the rendezvous server."""
+    async def register(
+        self,
+        endpoint: str,
+        su: bool = False,
+        password: str = "",
+    ) -> dict:
+        """Register this identity's endpoint with the rendezvous server.
+
+        Returns the server response dict (e.g. {"ok": True, "ttl": 60, "su": False})
+        or {"ok": False, "error": "..."} on failure.
+        """
         ts     = _now_ts()
         pubkey = _b64(self.identity.pub_bytes)
         handle = self.identity.handle
@@ -72,16 +81,20 @@ class RendezvousClient:
             "ts":       ts,
             "sig":      sig,
         }
+        if su:
+            payload["su"] = True
+        if password:
+            payload["password"] = password
         loop = asyncio.get_running_loop()
         try:
             result = await loop.run_in_executor(
                 None, _post, f"{self.base}/register", payload
             )
             _log.debug("registered %s → %s: %s", handle, endpoint, result)
-            return True
+            return result
         except Exception as exc:
             _log.warning("register failed: %s", exc)
-            return False
+            return {"ok": False, "error": str(exc)}
 
     async def lookup(self, handle: str) -> tuple[str, str] | None:
         """Look up a peer's endpoint.  Returns (endpoint, pubkey_b64) or None."""

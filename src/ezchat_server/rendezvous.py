@@ -75,6 +75,28 @@ async def handle_register(request: web.Request) -> web.Response:
     if not _verify_sig(pubkey, sig, handle, pubkey, endpoint, ts):
         return web.json_response({"error": "invalid signature"}, status=403)
 
+    # --- access control ---
+    auth_mode = request.app.get("auth_mode", "open")
+    allowlist = request.app.get("allowlist")
+
+    if auth_mode != "open" and allowlist:
+        if allowlist.is_allowed(pubkey):
+            pass  # known key, access granted
+        elif auth_mode == "password":
+            password = body.get("password", "")
+            if not password:
+                return web.json_response(
+                    {"error": "password_required", "reason": "password_required"},
+                    status=403,
+                )
+            if password != request.app.get("auth_password", ""):
+                return web.json_response({"error": "invalid password"}, status=403)
+            # Password correct — add to allowlist for future connections
+            allowlist.add(handle, pubkey, via="password")
+            _log.info("added %s to allowlist via password", handle)
+        elif auth_mode == "allowlist":
+            return web.json_response({"error": "not in allowlist"}, status=403)
+
     _purge_expired()
 
     # If this handle is already claimed by a different key, reject the attempt.
@@ -85,6 +107,15 @@ async def handle_register(request: web.Request) -> web.Response:
         _log.warning("handle conflict: %s tried to re-register as %r", pubkey[:12], handle)
         return web.json_response({"error": "handle already claimed"}, status=409)
 
+    # Track su status
+    su = body.get("su", False)
+    is_su = False
+    if su:
+        peer = request.transport.get_extra_info("peername")
+        if peer and peer[0] in ("127.0.0.1", "::1"):
+            is_su = True
+            _log.info("su access granted to %s", handle)
+
     ttl = request.app["ttl"]
     _registry[handle] = {
         "pubkey":   pubkey,
@@ -92,9 +123,10 @@ async def handle_register(request: web.Request) -> web.Response:
         "ts":       ts,
         "sig":      sig,
         "expires":  time.monotonic() + ttl,
+        "su":       is_su,
     }
     _log.info("registered %s → %s", handle, endpoint)
-    return web.json_response({"ok": True, "ttl": ttl})
+    return web.json_response({"ok": True, "ttl": ttl, "su": is_su})
 
 
 async def handle_lookup(request: web.Request) -> web.Response:
@@ -144,9 +176,23 @@ async def handle_myip(request: web.Request) -> web.Response:
     return web.json_response({"ip": ip})
 
 
-def make_app(ttl: int = 60) -> web.Application:
+def online_count() -> int:
+    """Return the number of currently registered (non-expired) peers."""
+    _purge_expired()
+    return len(_registry)
+
+
+def make_app(
+    ttl: int = 60,
+    auth_mode: str = "open",
+    auth_password: str = "",
+    allowlist=None,
+) -> web.Application:
     app = web.Application()
     app["ttl"] = ttl
+    app["auth_mode"] = auth_mode
+    app["auth_password"] = auth_password
+    app["allowlist"] = allowlist
     app.router.add_post("/register",         handle_register)
     app.router.add_get( "/lookup/{handle}",  handle_lookup)
     app.router.add_get( "/peers",            handle_peers)

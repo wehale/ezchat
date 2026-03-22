@@ -244,14 +244,21 @@ def net_thread(ui, args, stop: threading.Event) -> None:
         pub_ip   = await rdv.my_public_ip() or "127.0.0.1"
         port     = listen_port or 9000
         endpoint = f"{pub_ip}:{port}"
-        ok       = await rdv.register(endpoint)
-        if ok:
+        su_flag  = getattr(args, "su", False)
+        result   = await rdv.register(endpoint, su=su_flag)
+        if result.get("ok"):
             ui.inbox.put(("system_event",
                 f"registered as {identity.handle} @ {endpoint}"))
             rdv.start_keepalive(endpoint)
+            if result.get("su"):
+                ui.inbox.put(("__su_granted__", "", ""))
+        elif result.get("error") == "password_required":
+            ui.inbox.put(("system_event",
+                "Server requires a password. Reconnect with password."))
+            return
         else:
             ui.inbox.put(("system_event",
-                "warning: rendezvous registration failed"))
+                f"warning: rendezvous registration failed: {result.get('error', '?')}"))
 
         conn_queue: asyncio.Queue = asyncio.Queue()
         _mesh_tasks: set[asyncio.Task] = set()
@@ -398,14 +405,83 @@ def net_thread(ui, args, stop: threading.Event) -> None:
                 tcp_server.close()
 
     # ------------------------------------------------------------------
+    # Registry mode — fetch servers, wait for selection, then run mesh
+    # ------------------------------------------------------------------
+    async def _run_registry(registry_url: str) -> None:
+        from ezchat.net.registry_client import fetch_servers, verify_server_password
+
+        su_requested = getattr(args, "su", False)
+
+        async def _fetch_and_show() -> None:
+            servers = await fetch_servers(registry_url)
+            ui.inbox.put(("__registry_servers__", "", servers))
+
+        await _fetch_and_show()
+
+        # Wait for user to select a server via outbox
+        loop = asyncio.get_running_loop()
+        while not stop.is_set():
+            try:
+                item = await loop.run_in_executor(
+                    None, lambda: ui.outbox.get(timeout=0.5))
+            except _queue.Empty:
+                continue
+
+            if not isinstance(item, tuple) or len(item) < 2:
+                continue
+
+            sender = item[0]
+            if sender == "__refresh_servers__":
+                await _fetch_and_show()
+                continue
+
+            if sender == "__select_server__":
+                server_name = item[1]
+                # Find the server in the list
+                servers = getattr(ui, "registry_servers", [])
+                srv = next((s for s in servers if s["name"] == server_name), None)
+                if not srv:
+                    ui.inbox.put(("system_event", f"Server '{server_name}' not found"))
+                    continue
+
+                srv_url = srv.get("url")
+                if srv.get("access") == "password" and not srv_url:
+                    # Need to verify password
+                    ui.inbox.put(("system_event",
+                        f"Server '{server_name}' requires a password. Use: /connect {server_name} <password>"))
+                    password = item[2] if len(item) > 2 and item[2] else ""
+                    if not password:
+                        continue
+                    srv_url = await verify_server_password(registry_url, server_name, password)
+                    if not srv_url:
+                        ui.inbox.put(("system_event", "Invalid password"))
+                        continue
+
+                # Got a server URL — connect
+                ui.inbox.put(("__server_connected__", server_name, ""))
+                nonlocal server
+                server = srv_url
+                if su_requested:
+                    args.su = True
+                listen_port = getattr(args, "listen", None)
+                await _run_mesh(listen_port)
+                return
+
+            # Re-queue non-registry messages for the dispatcher
+            ui.outbox.put(item)
+
+    # ------------------------------------------------------------------
     # Entry
     # ------------------------------------------------------------------
     async def _run() -> None:
         dispatch_task = asyncio.create_task(_dispatch_outbox(), name="outbox-dispatch")
+        registry_url = getattr(args, "_registry_url", None)
         try:
             if server:
                 listen_port = getattr(args, "listen", None)
                 await _run_mesh(listen_port)
+            elif registry_url:
+                await _run_registry(registry_url)
             else:
                 await _run_direct()
         except Exception as exc:

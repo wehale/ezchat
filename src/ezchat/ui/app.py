@@ -81,6 +81,11 @@ class UI(DrawMixin, InputMixin):
         # Per-conversation AI message history for multi-turn context
         self._ai_history: dict[str, list[dict]] = {}
 
+        # Registry / server selection state
+        self.registry_servers: list[dict] = []   # [{name, description, access, online_count, url}]
+        self.connected_server: str = ""          # name of the server we're connected to
+        self.is_su: bool = False                 # whether we have su role
+
         self.inbox:     queue.Queue = queue.Queue()
         self.outbox:    queue.Queue = queue.Queue()
         self.sim_inbox: queue.Queue | None = None
@@ -263,6 +268,20 @@ class UI(DrawMixin, InputMixin):
                             self.active_peer = ""
                             self.scroll = 0
 
+                elif sender == "__registry_servers__":
+                    # text is the server list from the registry
+                    self.registry_servers = item[2] if len(item) > 2 else []
+                    if self.registry_servers:
+                        self._system(f"Found {len(self.registry_servers)} server(s) in registry")
+
+                elif sender == "__server_connected__":
+                    self.connected_server = text
+                    self._system(f"Connected to server: {text}")
+
+                elif sender == "__su_granted__":
+                    self.is_su = True
+                    self._system("Superuser access granted")
+
                 elif sender == "__peer_is_agent__":
                     self.agent_peers.add(text)
                     self.peers = [(h, on) for h, on in self.peers if h != text]
@@ -331,9 +350,26 @@ def _curses_main(stdscr: curses.window, args) -> None:
     if not getattr(args, "server", None) and ui_cfg.server:
         args.server = ui_cfg.server
 
+    # Resolve registry URL
+    registry_arg = getattr(args, "registry", None)
+    if registry_arg and registry_arg.lower() == "none":
+        args._registry_url = None
+    elif registry_arg:
+        args._registry_url = registry_arg
+    elif ui_cfg.registry:
+        args._registry_url = ui_cfg.registry
+    elif not getattr(args, "server", None) and not getattr(args, "connect", None) and not getattr(args, "listen", None):
+        # No explicit connection args — use default registry
+        from ezchat.net.registry_client import DEFAULT_REGISTRY
+        args._registry_url = DEFAULT_REGISTRY
+    else:
+        args._registry_url = None
+
     ui   = UI(stdscr, theme, handle=handle, identity=identity)
     stop = threading.Event()
-    if getattr(args, "connect", None) or getattr(args, "listen", None) or getattr(args, "server", None):
+    has_connection = getattr(args, "connect", None) or getattr(args, "listen", None) or getattr(args, "server", None)
+    has_registry = getattr(args, "_registry_url", None)
+    if has_connection or has_registry:
         net = threading.Thread(target=net_thread, args=(ui, args, stop), daemon=True)
         net.start()
 

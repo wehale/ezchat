@@ -25,9 +25,11 @@ class AIConfig:
 
 @dataclass
 class UIConfig:
-    theme:  str = "phosphor_green"
-    handle: str = ""
-    server: str = ""   # ezchat-server URL, e.g. "http://my-server.com:8000"
+    theme:       str = "phosphor_green"
+    handle:      str = ""
+    server:      str = ""   # ezchat-server URL, e.g. "http://my-server.com:8000"
+    registry:    str = ""   # registry URL override
+    last_server: str = ""   # last selected server name from registry
 
 
 def _load_toml(path: Path) -> dict:
@@ -54,7 +56,9 @@ def load_ui_config(path: Path | None = None) -> UIConfig:
     """Load [ui] from config.toml; return defaults if file/section absent."""
     ui = _load_toml(path or get_home() / "config.toml").get("ui", {})
     return UIConfig(
-        theme  = ui.get("theme",  "phosphor_green"),
-        handle = ui.get("handle", ""),
-        server = ui.get("server", ""),
+        theme       = ui.get("theme",       "phosphor_green"),
+        handle      = ui.get("handle",      ""),
+        server      = ui.get("server",      ""),
+        registry    = ui.get("registry",    ""),
+        last_server = ui.get("last_server", ""),
     )

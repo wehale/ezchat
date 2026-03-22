@@ -100,6 +100,21 @@ class DrawMixin:
                 online = any(h == handle and on for h, on in self.peers)
                 rows.append((handle, handle, online))
             return rows
+        # Show server list from registry if not connected to a server yet
+        registry_servers = getattr(self, "registry_servers", [])
+        connected_server = getattr(self, "connected_server", "")
+        if registry_servers and not connected_server and not self.peers:
+            rows: list[tuple[str, str, bool]] = []
+            rows.append(("\x00srv_header", "── servers ──", False))
+            for srv in registry_servers:
+                name   = srv.get("name", "?")
+                access = srv.get("access", "open")
+                count  = srv.get("online_count", 0)
+                icon   = "🔒" if access == "password" else "●"
+                label  = f"{icon} {name} ({count})"
+                rows.append((f"\x00srv:{name}", label, True))
+            return rows
+
         rows: list[tuple[str, str, bool]] = [(SCRATCH_PEER, SCRATCH_LABEL, True)]
         if self.channels:
             rows.append(("\x00ch_header", "── channels ──", False))
@@ -136,7 +151,8 @@ class DrawMixin:
 
         rows = self._presence_rows()
         selectable = [i for i, (k, _, _) in enumerate(rows)
-                      if not k.startswith("\x00ch_") and not k.startswith("\x00dm_")]
+                      if not k.startswith("\x00ch_") and not k.startswith("\x00dm_")
+                      and not k.startswith("\x00srv_")]
         if selectable:
             if self.peer_cursor not in selectable:
                 self.peer_cursor = selectable[0]
@@ -147,7 +163,7 @@ class DrawMixin:
             row = i + 1
             if row >= h - 1:
                 break
-            is_header  = key in ("\x00ch_header", "\x00dm_header")
+            is_header  = key in ("\x00ch_header", "\x00dm_header", "\x00srv_header")
             is_cursor  = focused and i == self.peer_cursor and not is_header
             is_active  = key == self.active_peer
             is_back    = key == BACK_ENTRY
@@ -165,6 +181,8 @@ class DrawMixin:
                 attr = self.theme.system
             elif is_scratch:
                 attr = self.theme.accent
+            elif key.startswith("\x00srv:"):
+                attr = self.theme.online
             else:
                 blocked = key in getattr(self, "blocked_peers", set())
                 kst     = getattr(self, "peer_key_status", {})
@@ -179,7 +197,8 @@ class DrawMixin:
                     attr = self.theme.online if online else self.theme.offline
 
             badge    = f" [{self.unread[key]}]" if key in self.unread else ""
-            dot      = "" if is_scratch or is_back else ("●" if online else "○")
+            is_server = key.startswith("\x00srv:")
+            dot      = "" if is_scratch or is_back or is_server else ("●" if online else "○")
             prefix   = f"{dot} " if dot else ""
             row_text = f"{prefix}{label}{badge}"[:inner_w]
             if is_cursor:

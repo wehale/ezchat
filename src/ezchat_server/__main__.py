@@ -14,6 +14,17 @@ server.toml example
     relay_port = 9001
     ttl        = 60
     log_level  = "info"
+
+    [registry]
+    url         = "https://ezchat.kirbus.ai"
+    name        = "my-server"
+    description = "A public chat server"
+    secret      = "shared-registry-token"
+    access      = "open"
+
+    [auth]
+    mode     = "open"
+    # password = "hunter2"
 """
 from __future__ import annotations
 
@@ -25,7 +36,7 @@ from pathlib import Path
 
 async def _main(cfg) -> None:
     from aiohttp import web
-    from ezchat_server.rendezvous import make_app
+    from ezchat_server.rendezvous import make_app, online_count
     from ezchat_server.relay import start_relay_server
 
     logging.basicConfig(
@@ -34,8 +45,20 @@ async def _main(cfg) -> None:
     )
     log = logging.getLogger("ezchat-server")
 
+    # --- allowlist (for password / allowlist auth modes) ---
+    allowlist = None
+    if cfg.auth.mode != "open":
+        from ezchat_server.allowlist import Allowlist
+        allowlist = Allowlist()
+        log.info("auth mode: %s  (%d keys in allowlist)", cfg.auth.mode, len(allowlist.list_all()))
+
     # --- rendezvous HTTP API ---
-    app    = make_app(ttl=cfg.ttl)
+    app    = make_app(
+        ttl=cfg.ttl,
+        auth_mode=cfg.auth.mode,
+        auth_password=cfg.auth.password,
+        allowlist=allowlist,
+    )
     runner = web.AppRunner(app)
     await runner.setup()
     site   = web.TCPSite(runner, cfg.host, cfg.api_port)
@@ -46,11 +69,26 @@ async def _main(cfg) -> None:
     relay = await start_relay_server(cfg.host, cfg.relay_port)
     log.info("relay listening on %s:%d", cfg.host, cfg.relay_port)
 
+    # --- registry heartbeat ---
+    heartbeat_task = None
+    stop_event = asyncio.Event()
+    if cfg.registry.url and cfg.registry.name:
+        from ezchat_server.heartbeat import heartbeat_loop
+        server_url = f"http://{cfg.host}:{cfg.api_port}"
+        heartbeat_task = asyncio.create_task(
+            heartbeat_loop(cfg.registry, server_url, online_count, stop_event),
+            name="registry-heartbeat",
+        )
+        log.info("registering with %s as %r", cfg.registry.url, cfg.registry.name)
+
     log.info("ezchat-server ready  (ttl=%ds)", cfg.ttl)
 
     try:
         await asyncio.Event().wait()   # run forever
     finally:
+        stop_event.set()
+        if heartbeat_task:
+            await heartbeat_task
         relay.close()
         await runner.cleanup()
 

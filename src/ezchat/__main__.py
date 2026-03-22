@@ -79,6 +79,10 @@ def main() -> None:
                         help="Listen for incoming connections on PORT")
     parser.add_argument("--server",  metavar="URL",
                         help="ezchat-server URL (e.g. http://my-server.com:8000)")
+    parser.add_argument("--registry", metavar="URL",
+                        help="Registry URL (default: built-in). Use 'none' to disable.")
+    parser.add_argument("--su", action="store_true",
+                        help="Request superuser (admin) role (requires localhost)")
 
     # --- test mode options ---
     parser.add_argument("--echo-delay",  metavar="MS",   type=int, default=0, help="Simulated echo latency (ms)")
