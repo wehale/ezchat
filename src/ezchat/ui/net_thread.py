@@ -130,17 +130,27 @@ def net_thread(ui, args, stop: threading.Event) -> None:
     # ------------------------------------------------------------------
     # Connection helpers
     # ------------------------------------------------------------------
-    async def _relay_connect(relay_host: str, relay_port: int, target: str):
+    async def _relay_connect(relay_host: str, relay_port: int, target: str,
+                              retries: int = 4, retry_delay: float = 1.5):
+        """Connect via relay, retrying briefly to handle the re-registration window."""
         import json as _json
-        reader, writer = await asyncio.open_connection(relay_host, relay_port)
-        writer.write((_json.dumps({"role": "connect", "target": target}) + "\n").encode())
-        await writer.drain()
-        line = await asyncio.wait_for(reader.readline(), timeout=10)
-        resp = _json.loads(line.decode().strip())
-        if not resp.get("ok"):
-            writer.close()
-            raise ConnectionError(f"relay rejected: {resp.get('error', 'unknown')}")
-        return reader, writer
+        last_exc: Exception = ConnectionError("relay: no attempts made")
+        for attempt in range(retries):
+            if attempt:
+                await asyncio.sleep(retry_delay)
+            try:
+                reader, writer = await asyncio.open_connection(relay_host, relay_port)
+                writer.write((_json.dumps({"role": "connect", "target": target}) + "\n").encode())
+                await writer.drain()
+                line = await asyncio.wait_for(reader.readline(), timeout=10)
+                resp = _json.loads(line.decode().strip())
+                if resp.get("ok"):
+                    return reader, writer
+                writer.close()
+                last_exc = ConnectionError(f"relay rejected: {resp.get('error', 'unknown')}")
+            except Exception as exc:
+                last_exc = exc
+        raise last_exc
 
     async def _relay_wait(relay_host: str, relay_port: int, my_handle: str):
         import json as _json
