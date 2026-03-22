@@ -70,6 +70,7 @@ class UI(DrawMixin, InputMixin):
         self.agent_peers:       set[str]               = set()
         self.peer_fingerprints: dict[str, str]         = {}
         self.peer_key_status:   dict[str, str]         = {}
+        self.blocked_peers:     set[str]               = set()
 
         self.focus:       str = "input"
         self.peer_cursor: int = 0
@@ -111,11 +112,14 @@ class UI(DrawMixin, InputMixin):
         for ch_name, members in _store.load_channels().items():
             self.channels[ch_name] = Channel(name=ch_name, members=list(members))
 
-        for handle in _store.load_peers():
+        peer_records = _store.load_peers()
+        for handle, rec in peer_records.items():
             if handle == self.handle:
                 continue
             if not any(h == handle for h, _ in self.peers):
                 self.peers.append((handle, False))
+            if rec.blocked:
+                self.blocked_peers.add(handle)
 
         saved = _store.load_cmd_history()
         if saved:

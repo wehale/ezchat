@@ -29,6 +29,7 @@ class PeerRecord:
     ed25519_pub_b64: str  # base64 raw Ed25519 public key bytes
     last_seen:      str = ""
     ip_hint:        str = ""
+    blocked:        bool = False
 
 
 def _pub_to_b64(pub: Ed25519PublicKey) -> str:
@@ -55,6 +56,7 @@ def load_peers() -> dict[str, PeerRecord]:
             ed25519_pub_b64 = attrs.get("ed25519_pub", ""),
             last_seen       = attrs.get("last_seen", ""),
             ip_hint         = attrs.get("ip_hint", ""),
+            blocked         = attrs.get("blocked", False),
         )
     return result
 
@@ -71,6 +73,8 @@ def _write_peers(peers: dict[str, PeerRecord]) -> None:
             lines.append(f'last_seen = "{rec.last_seen}"\n')
         if rec.ip_hint:
             lines.append(f'ip_hint = "{rec.ip_hint}"\n')
+        if rec.blocked:
+            lines.append("blocked = true\n")
         lines.append("\n")
     _peers_path().write_text("".join(lines), encoding="utf-8")
 
@@ -82,12 +86,23 @@ def upsert_peer(
 ) -> None:
     """Add or update a peer record and save immediately."""
     peers = load_peers()
+    was_blocked = peers[handle].blocked if handle in peers else False
     peers[handle] = PeerRecord(
         handle          = handle,
         ed25519_pub_b64 = _pub_to_b64(pub),
         last_seen       = datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
         ip_hint         = ip_hint,
+        blocked         = was_blocked,
     )
+    _write_peers(peers)
+
+
+def set_peer_blocked(handle: str, blocked: bool) -> None:
+    """Mark a peer as blocked or unblocked and save immediately."""
+    peers = load_peers()
+    if handle not in peers:
+        return
+    peers[handle].blocked = blocked
     _write_peers(peers)
 
 

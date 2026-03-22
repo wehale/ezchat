@@ -110,9 +110,17 @@ class DrawMixin:
             kst = getattr(self, "peer_key_status", {})
             rows.append(("\x00dm_header", "── direct ──", False))
             for handle, online in sorted(self.peers, key=lambda p: (not p[1], p[0])):
-                fp     = fps.get(handle, "")
-                status = kst.get(handle, "known")
-                pfx    = "⚠ " if status == "changed" else ("★ " if status == "new" else "")
+                fp      = fps.get(handle, "")
+                status  = kst.get(handle, "known")
+                blocked = handle in getattr(self, "blocked_peers", set())
+                if blocked:
+                    pfx = "⊘ "
+                elif status == "changed":
+                    pfx = "⚠ "
+                elif status == "new":
+                    pfx = "★ "
+                else:
+                    pfx = ""
                 label  = f"{pfx}{handle} [{fp[:4]}]" if fp else f"{pfx}{handle}"
                 rows.append((handle, label, online))
         return rows
@@ -158,9 +166,12 @@ class DrawMixin:
             elif is_scratch:
                 attr = self.theme.accent
             else:
-                kst    = getattr(self, "peer_key_status", {})
-                status = kst.get(key, "known")
-                if status == "changed":
+                blocked = key in getattr(self, "blocked_peers", set())
+                kst     = getattr(self, "peer_key_status", {})
+                status  = kst.get(key, "known")
+                if blocked:
+                    attr = self.theme.offline
+                elif status == "changed":
                     attr = self.theme.error
                 elif status == "new":
                     attr = self.theme.accent

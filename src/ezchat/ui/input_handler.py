@@ -27,6 +27,8 @@ class InputMixin:
 /ai <prompt>                 ask the AI; response sent to current conversation
 /ai-peer                     forward the last peer message to the AI
 /accept [peer]               accept a new or key-changed peer (default: current peer)
+/block [peer]                mark a peer as blocked (⊘)
+/unblock [peer]              remove blocked mark from a peer
 /clear                       clear chat history
 /quit  (or /q)               exit ezchat
 /channel create <name>       create a new channel
@@ -88,6 +90,26 @@ PgUp / PgDn        scroll chat"""
                 self._system(f"Accepted {peer}")
             else:
                 self._error(f"{peer} has no pending key alert")
+
+        elif cmd == "/block":
+            peer = arg.strip().lstrip("@") or self.active_peer
+            if not peer:
+                self._error("Usage: /block <peer>  (or select a peer first)")
+                return
+            self.blocked_peers.add(peer)
+            from ezchat.store.peers import set_peer_blocked
+            set_peer_blocked(peer, True)
+            self._system(f"Blocked {peer}")
+
+        elif cmd == "/unblock":
+            peer = arg.strip().lstrip("@") or self.active_peer
+            if not peer:
+                self._error("Usage: /unblock <peer>  (or select a peer first)")
+                return
+            self.blocked_peers.discard(peer)
+            from ezchat.store.peers import set_peer_blocked
+            set_peer_blocked(peer, False)
+            self._system(f"Unblocked {peer}")
 
         elif cmd == "/clear":
             self.messages.clear()
