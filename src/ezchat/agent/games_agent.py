@@ -20,7 +20,6 @@ from ezchat.net.connection import Connection
 
 _log = logging.getLogger(__name__)
 
-_HELP_HEADER = "Available games (type a game name to start):"
 _NO_SESSION  = "You're not in a game. Type 'games' to see what's available."
 
 
@@ -29,13 +28,13 @@ def _games_list() -> str:
     games = list_games()
     if not games:
         return "No games available."
-    lines = [_HELP_HEADER]
+    lines = ["games:"]
     for g in games:
         players = (
             "single-player" if g.max_players == 1
             else f"1–{g.max_players} players"
         )
-        lines.append(f"  {g.name:<14} {g.description}  ({players})")
+        lines.append(f"    {g.name} ({g.description}, {players})")
     return "\n".join(lines)
 
 
