@@ -19,7 +19,7 @@ SCRATCH_PEER     = "\x00scratch"
 SCRATCH_LABEL    = "✦ scratch"
 BACK_ENTRY       = "\x00.."          # sentinel for the ../ navigation row
 RESERVED_HANDLES  = frozenset({SCRATCH_PEER, "scratch", SCRATCH_LABEL,
-                                "system", "direct"})
+                                "system", "direct", "games", "echo"})
 RESERVED_CHANNELS = frozenset({"scratch", "system", "direct", "..", "../"})
 
 

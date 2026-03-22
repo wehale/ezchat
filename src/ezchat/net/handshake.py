@@ -68,8 +68,8 @@ async def do_handshake(
     peer_sig           = _unb64(peer["sig"])
     peer_handle = peer["handle"]
 
-    # Reject reserved handle names (prevents scratch-pad impersonation)
-    _reserved = {"scratch", "\x00scratch", "✦ scratch", "system"}
+    # Reject reserved handle names (prevents impersonation of built-in agents)
+    _reserved = {"scratch", "\x00scratch", "✦ scratch", "system", "games", "echo"}
     if peer_handle.lower() in {r.lower() for r in _reserved} or peer_handle.startswith("\x00"):
         raise ValueError(f"Peer attempted to use reserved handle: {peer_handle!r}")
 
