@@ -15,8 +15,11 @@ from ezchat.games import BaseGame
 
 _DEFAULT_PATHS = [
     Path.home() / ".ezchat" / "games" / "zork1.z5",
+    Path.home() / ".ezchat" / "games" / "zork1.z3",
     Path.home() / ".ezchat" / "games" / "zork.z5",
+    Path.home() / ".ezchat" / "games" / "zork.z3",
     Path("/usr/share/games/zork/zork1.z5"),
+    Path("/usr/share/games/zork/zork1.z3"),
 ]
 
 _INSTALL_MSG = (
