@@ -405,5 +405,11 @@ def net_thread(ui, args, stop: threading.Event) -> None:
             ui.inbox.put(("system_event", f"network error: {exc}"))
         finally:
             dispatch_task.cancel()
+            # Cancel all remaining tasks so asyncio.run() exits cleanly
+            pending = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
+            for t in pending:
+                t.cancel()
+            if pending:
+                await asyncio.gather(*pending, return_exceptions=True)
 
     asyncio.run(_run())
