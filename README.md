@@ -65,15 +65,27 @@ ezchat-server --config server.toml
 
 ### Connect from anywhere
 
-```bash
-# Listener (the person others connect to)
-ezchat --server http://SERVER_IP:8000 --handle alice --listen 9000
+Everyone just runs the same command — no separate "listener" and "connector" roles needed:
 
-# Connector (friend connecting from anywhere)
-ezchat --server http://SERVER_IP:8000 --handle bob --connect @alice
+```bash
+ezchat --server http://SERVER_IP:8000 --handle alice
+ezchat --server http://SERVER_IP:8000 --handle bob
+ezchat --server http://SERVER_IP:8000 --handle carol
 ```
 
-`--connect @alice` looks up alice's endpoint via the rendezvous server, tries a direct TCP connection first, and falls back to the relay if direct fails (e.g. behind NAT). The relay only ever sees ciphertext.
+On startup each client:
+1. Registers with the rendezvous server
+2. Fetches the list of everyone already online
+3. Connects to all of them (direct TCP first, relay fallback)
+4. Polls every 20 seconds for new arrivals and connects automatically
+
+Everyone ends up connected to everyone else. The server never sees messages — it only knows who is currently online (forgotten after 60 seconds).
+
+If you want to accept direct TCP connections (faster than relay), add `--listen PORT`:
+
+```bash
+ezchat --server http://SERVER_IP:8000 --handle alice --listen 9000
+```
 
 ### Save your server URL
 

@@ -100,6 +100,22 @@ class RendezvousClient:
             _log.warning("lookup %s failed: %s", handle, exc)
             return None
 
+    async def peers(self) -> list[dict]:
+        """Return all currently online peers (excluding self).
+
+        Each entry: {"handle": str, "endpoint": str, "pubkey": str}
+        """
+        loop = asyncio.get_running_loop()
+        try:
+            result = await loop.run_in_executor(
+                None, _get,
+                f"{self.base}/peers?me={self.identity.handle}"
+            )
+            return result.get("peers", [])
+        except Exception as exc:
+            _log.warning("peers fetch failed: %s", exc)
+            return []
+
     async def my_public_ip(self) -> str | None:
         """Ask the server what IP it sees us coming from."""
         loop = asyncio.get_running_loop()

@@ -10,6 +10,10 @@ GET /lookup/{handle}
     Returns: { "endpoint": "1.2.3.4:9000", "pubkey": "<base64>" }
     404 if not found or expired.
 
+GET /peers
+    Returns: { "peers": [ { "handle": "alice", "endpoint": "...", "pubkey": "..." }, ... ] }
+    All currently registered peers (excluding the caller's handle if provided via ?me=alice).
+
 POST /keepalive
     Body: { "handle": "alice", "ts": "...", "sig": "<base64>" }
     Resets the TTL for an existing registration.
@@ -113,6 +117,17 @@ async def handle_keepalive(request: web.Request) -> web.Response:
     return web.json_response({"ok": True, "ttl": ttl})
 
 
+async def handle_peers(request: web.Request) -> web.Response:
+    _purge_expired()
+    me    = request.rel_url.query.get("me", "")
+    peers = [
+        {"handle": h, "endpoint": v["endpoint"], "pubkey": v["pubkey"]}
+        for h, v in _registry.items()
+        if h != me
+    ]
+    return web.json_response({"peers": peers})
+
+
 async def handle_myip(request: web.Request) -> web.Response:
     peer = request.transport.get_extra_info("peername")
     ip   = peer[0] if peer else "unknown"
@@ -124,6 +139,7 @@ def make_app(ttl: int = 60) -> web.Application:
     app["ttl"] = ttl
     app.router.add_post("/register",         handle_register)
     app.router.add_get( "/lookup/{handle}",  handle_lookup)
+    app.router.add_get( "/peers",            handle_peers)
     app.router.add_post("/keepalive",        handle_keepalive)
     app.router.add_get( "/myip",             handle_myip)
     return app
