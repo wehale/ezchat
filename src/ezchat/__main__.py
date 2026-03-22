@@ -59,8 +59,8 @@ def main() -> None:
     )
     mode.add_argument(
         "--agent",
-        metavar="SCRIPT",
-        help="Run as a headless agent with the given handler script",
+        metavar="NAME_OR_SCRIPT",
+        help="Run as a headless agent. Built-ins: 'games', 'echo'. Or pass a .py script path.",
     )
     mode.add_argument(
         "--bench",
