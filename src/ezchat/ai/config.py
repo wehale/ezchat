@@ -25,7 +25,7 @@ class AIConfig:
 
 @dataclass
 class UIConfig:
-    theme:       str = "phosphor_green"
+    theme:       str = "bbs"
     handle:      str = ""
     server:      str = ""   # ezchat-server URL, e.g. "http://my-server.com:8000"
     registry:    str = ""   # registry URL override
@@ -56,7 +56,7 @@ def load_ui_config(path: Path | None = None) -> UIConfig:
     """Load [ui] from config.toml; return defaults if file/section absent."""
     ui = _load_toml(path or get_home() / "config.toml").get("ui", {})
     return UIConfig(
-        theme       = ui.get("theme",       "phosphor_green"),
+        theme       = ui.get("theme",       "bbs"),
         handle      = ui.get("handle",      ""),
         server      = ui.get("server",      ""),
         registry    = ui.get("registry",    ""),
