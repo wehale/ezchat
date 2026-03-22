@@ -463,6 +463,10 @@ def net_thread(ui, args, stop: threading.Event) -> None:
                 server = srv_url
                 if su_requested:
                     args.su = True
+                    # Rewrite URL to localhost so server sees 127.0.0.1
+                    from urllib.parse import urlparse
+                    parsed = urlparse(srv_url)
+                    server = f"http://127.0.0.1:{parsed.port or 8000}"
                 listen_port = getattr(args, "listen", None)
                 await _run_mesh(listen_port)
                 return
