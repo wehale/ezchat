@@ -31,6 +31,7 @@ class InputMixin:
 /unblock [peer]              remove blocked mark from a peer
 /servers                     refresh server list from registry
 /connect <name>              connect to a server by name
+/disconnect                  leave current server, return to server list
 /clear                       clear chat history
 /quit  (or /q)               exit ezchat
 /channel create <name>       create a new channel
@@ -112,6 +113,15 @@ PgUp / PgDn        scroll chat"""
             from ezchat.store.peers import set_peer_blocked
             set_peer_blocked(peer, False)
             self._system(f"Unblocked {peer}")
+
+        elif cmd == "/disconnect":
+            self.outbox.put(("__disconnect__", "", ""))
+            self.connected_server = ""
+            self.is_su = False
+            self.peers.clear()
+            self.active_peer = ""
+            self.view = "top"
+            self._system("Disconnected from server")
 
         elif cmd == "/servers":
             self.outbox.put(("__refresh_servers__", "", ""))

@@ -36,6 +36,7 @@ def net_thread(ui, args, stop: threading.Event) -> None:
     # Track which handles we're already connected to (or connecting to)
     _connected: set[str] = set()
     _connected_lock = asyncio.Lock()
+    _disconnect_event: asyncio.Event | None = None
 
     # Per-connection send queues — keyed by peer handle.
     # A single dispatcher task reads from ui.outbox and routes items here
@@ -51,6 +52,12 @@ def net_thread(ui, args, stop: threading.Event) -> None:
                     None, lambda: ui.outbox.get(timeout=0.1)
                 )
                 recipient = item[0]   # peer handle or "#channel"
+                if recipient == "__disconnect__":
+                    if _disconnect_event:
+                        _disconnect_event.set()
+                    continue
+                if recipient in ("__refresh_servers__", "__select_server__", "__admin_cmd__"):
+                    continue  # handled elsewhere
                 channel   = item[2] if len(item) > 2 else ""
                 if channel:
                     # Fan-out to every channel member that has an open connection
@@ -346,11 +353,14 @@ def net_thread(ui, args, stop: threading.Event) -> None:
 
         poll_task = _spawn(_poll_loop(), name="peer-poll")
 
+        nonlocal _disconnect_event
+        _disconnect_event = asyncio.Event()
+
         try:
-            await asyncio.Event().wait() if not stop.is_set() else None
-            while not stop.is_set():
+            while not stop.is_set() and not _disconnect_event.is_set():
                 await asyncio.sleep(0.5)
         finally:
+            _disconnect_event = None
             for t in list(_mesh_tasks):
                 t.cancel()
             await asyncio.gather(*_mesh_tasks, return_exceptions=True)
@@ -468,8 +478,15 @@ def net_thread(ui, args, stop: threading.Event) -> None:
                     parsed = urlparse(srv_url)
                     server = f"http://127.0.0.1:{parsed.port or 8000}"
                 listen_port = getattr(args, "listen", None)
+                _connected.clear()
+                _peer_queues.clear()
                 await _run_mesh(listen_port)
-                return
+                # If we get here, mesh exited (disconnect or stop)
+                if stop.is_set():
+                    return
+                # Disconnected — refresh server list and loop back
+                await _fetch_and_show()
+                continue
 
             # Re-queue non-registry messages for the dispatcher
             ui.outbox.put(item)
