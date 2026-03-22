@@ -277,6 +277,8 @@ class DrawMixin:
         if self.active_peer:
             display    = SCRATCH_LABEL if self.active_peer == SCRATCH_PEER else self.active_peer
             chat_title = f"{display} [{total_unread}]" if total_unread else display
+        elif getattr(self, "registry_servers", []) and not getattr(self, "connected_server", ""):
+            chat_title = "select a chat server with Tab"
         else:
             chat_title = "chat — select a peer with Tab"
         chat_border = self.theme.error if total_unread else self.theme.border
