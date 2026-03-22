@@ -287,20 +287,17 @@ def net_thread(ui, args, stop: threading.Event) -> None:
                 name=f"connect-{peer['handle']}",
             )
 
-        # Poll for new peers periodically
+        # Poll for new peers periodically and reconnect to any that restarted
         async def _poll_loop() -> None:
-            known: set[str] = {p["handle"] for p in existing}
-            known.add(identity.handle)
             while not stop.is_set():
                 await asyncio.sleep(_POLL_INTERVAL)
                 try:
                     current = await rdv.peers()
                     for peer in current:
                         ph = peer["handle"]
-                        if ph not in known:
-                            known.add(ph)
-                            ui.inbox.put(("system_event",
-                                f"{ph} came online"))
+                        async with _connected_lock:
+                            already = ph in _connected
+                        if not already:
                             asyncio.create_task(
                                 _connect_to_peer(ph, peer.get("endpoint"), rdv),
                                 name=f"connect-{ph}",
