@@ -15,6 +15,7 @@ class RegistrySection:
     secret:      str = ""          # shared token for registry auth
     access:      str = "open"      # "open" | "password" | "unlisted"
     password:    str = ""          # server-level password (for access == "password")
+    public_url:  str = ""          # this server's public URL, e.g. "http://100.0.197.245:8000"
 
 
 @dataclass
@@ -58,6 +59,7 @@ def load_server_config(path: Path | None = None) -> ServerConfig:
             secret      = r.get("secret",      ""),
             access      = r.get("access",      "open"),
             password    = r.get("password",    ""),
+            public_url  = r.get("public_url",  ""),
         ),
         auth       = AuthSection(
             mode     = a.get("mode",     "open"),

@@ -11,6 +11,7 @@ name        = "my-server"
 description = "A public ezchat server"
 secret      = "CHANGE_ME"
 access      = "open"
+public_url  = "http://YOUR_PUBLIC_IP:8000"
 # password  = ""          # only needed if access = "password"
 
 [auth]

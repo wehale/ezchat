@@ -74,7 +74,7 @@ async def _main(cfg) -> None:
     stop_event = asyncio.Event()
     if cfg.registry.url and cfg.registry.name:
         from ezchat_server.heartbeat import heartbeat_loop
-        server_url = f"http://{cfg.host}:{cfg.api_port}"
+        server_url = cfg.registry.public_url or f"http://{cfg.host}:{cfg.api_port}"
         heartbeat_task = asyncio.create_task(
             heartbeat_loop(cfg.registry, server_url, online_count, stop_event),
             name="registry-heartbeat",
