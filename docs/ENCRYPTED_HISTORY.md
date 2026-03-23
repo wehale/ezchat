@@ -3,7 +3,7 @@
 ## Problem
 
 Chat history is stored as plaintext `.log` files in
-`~/.ezchat-{handle}/history/`. Anyone with filesystem access can
+`~/.kirbus-{handle}/history/`. Anyone with filesystem access can
 read all past conversations.
 
 ## Solution
@@ -17,7 +17,7 @@ entries before they hit disk.
 ### First time
 
 ```bash
-ezchat --handle kirbus --encrypt-history
+kirbus --handle kirbus --encrypt-history
 ```
 
 Prompts:
@@ -27,13 +27,13 @@ Confirm passphrase: ********
 ```
 
 Any existing plaintext history is encrypted in place. A salt file
-is created at `~/.ezchat-{handle}/history/.salt`. The preference
+is created at `~/.kirbus-{handle}/history/.salt`. The preference
 `encrypt_history = true` is saved to `config.toml`.
 
 ### Subsequent launches
 
 ```bash
-ezchat --handle kirbus
+kirbus --handle kirbus
 ```
 
 Detects `encrypt_history = true` in config (or the presence of
@@ -53,7 +53,7 @@ avoid corrupting the log with a different key.
 ### Disabling
 
 ```bash
-ezchat --handle kirbus --no-encrypt-history
+kirbus --handle kirbus --no-encrypt-history
 ```
 
 Prompts for passphrase, decrypts all history back to plaintext,

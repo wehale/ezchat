@@ -1,4 +1,4 @@
-# ezchat Architecture
+# kirbus Architecture
 
 A peer-to-peer, end-to-end encrypted terminal chat platform with AI integration, a retro curses UI, a built-in user registry chain, and optional tamper-evident message logging.
 
@@ -15,7 +15,7 @@ A peer-to-peer, end-to-end encrypted terminal chat platform with AI integration,
 7. [Terminal UI](#terminal-ui)
 8. [AI Integration](#ai-integration)
 9. [Registry Chain](#registry-chain)
-10. [ezchat-server](#ezchat-server)
+10. [kirbus-server](#kirbus-server)
 11. [Offline Message Delivery](#offline-message-delivery)
 12. [File Transfer](#file-transfer)
 13. [Sound Notifications](#sound-notifications)
@@ -33,7 +33,7 @@ A peer-to-peer, end-to-end encrypted terminal chat platform with AI integration,
 
 ## Overview
 
-ezchat is a Python terminal application that enables direct, encrypted peer-to-peer chat between two users without a central server. It renders a retro-style curses interface that users can skin with classic terminal aesthetics. Users may optionally configure an LLM API key to interact with AI inline during chat, and share those AI exchanges with their peer. A built-in Merkle registry chain provides a decentralized, gas-free user directory — no external blockchain node or wallet required. An optional tamper-evident message log extends this chain for users who want auditability.
+kirbus is a Python terminal application that enables direct, encrypted peer-to-peer chat between two users without a central server. It renders a retro-style curses interface that users can skin with classic terminal aesthetics. Users may optionally configure an LLM API key to interact with AI inline during chat, and share those AI exchanges with their peer. A built-in Merkle registry chain provides a decentralized, gas-free user directory — no external blockchain node or wallet required. An optional tamper-evident message log extends this chain for users who want auditability.
 
 ---
 
@@ -49,7 +49,7 @@ ezchat is a Python terminal application that enables direct, encrypted peer-to-p
 - Built-in Merkle user registry — discover all users on the system; no external blockchain, no gas, no wallet required
 - User registry stores identity only — no chat state, no message history, no online status
 - Optional tamper-evident message log anchored to the registry chain
-- Single-command setup: `pip install ezchat && ezchat` — everything initializes automatically
+- Single-command setup: `pip install kirbus && kirbus` — everything initializes automatically
 - Provably stateless rendezvous server — no message content, no persistent storage, open source so anyone can self-host
 
 ### Non-Goals
@@ -65,7 +65,7 @@ ezchat is a Python terminal application that enables direct, encrypted peer-to-p
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                        ezchat process                       │
+│                        kirbus process                       │
 │                                                             │
 │  ┌──────────┐   ┌──────────────┐   ┌─────────────────────┐ │
 │  │  Curses  │   │   Message    │   │    AI Interface     │ │
@@ -158,7 +158,7 @@ Envelope fields:
 
 ## NAT Traversal & Rendezvous
 
-Most users are behind NAT (home routers, corporate firewalls, mobile carriers). A pure "just connect" P2P approach fails in these environments. ezchat solves this with a layered strategy and a deliberately stateless rendezvous server.
+Most users are behind NAT (home routers, corporate firewalls, mobile carriers). A pure "just connect" P2P approach fails in these environments. kirbus solves this with a layered strategy and a deliberately stateless rendezvous server.
 
 ### Connection Attempt Order
 
@@ -207,9 +207,9 @@ Registration payload (sent over HTTPS):
 
 ### STUN: Discovering Your Public Endpoint
 
-A STUN server (RFC 5389) is inherently stateless — it receives a UDP packet and reflects back the client's public IP and port as seen from the internet. It stores nothing. ezchat contacts a STUN server on startup to discover its own public endpoint before registering with the rendezvous server.
+A STUN server (RFC 5389) is inherently stateless — it receives a UDP packet and reflects back the client's public IP and port as seen from the internet. It stores nothing. kirbus contacts a STUN server on startup to discover its own public endpoint before registering with the rendezvous server.
 
-Public STUN servers (e.g., Google's `stun.l.google.com:19302`) can be used, or the ezchat rendezvous server can double as the STUN server.
+Public STUN servers (e.g., Google's `stun.l.google.com:19302`) can be used, or the kirbus rendezvous server can double as the STUN server.
 
 ### UDP Hole Punching
 
@@ -239,7 +239,7 @@ class RendezvousClient:
 
 ```toml
 [rendezvous]
-url = "https://rendezvous.ezchat.example"  # default public instance
+url = "https://rendezvous.kirbus.example"  # default public instance
 ttl = 60                                    # seconds
 ```
 
@@ -265,7 +265,7 @@ Users who want full sovereignty can self-host the open-source rendezvous server 
 
 ### Identity (persistent keys)
 
-- Users have a long-term Ed25519 keypair stored in `~/.ezchat/identity.key`
+- Users have a long-term Ed25519 keypair stored in `~/.kirbus/identity.key`
 - The public key serves as the user's address/identity (`@<base58-pubkey>`)
 - During handshake, each side signs the ephemeral key with their identity key so the peer can verify they're talking to the expected user
 
@@ -286,7 +286,7 @@ Users who want full sovereignty can self-host the open-source rendezvous server 
 
 ```
 ┌──────────────────────────────────────────────────────┐
-│ ezchat  ◄──── title / status bar (peer, encryption)  │
+│ kirbus  ◄──── title / status bar (peer, encryption)  │
 ├──────────────────────────────────────────────────────┤
 │                                                      │
 │  [10:42] @alice: hello                               │
@@ -302,7 +302,7 @@ Users who want full sovereignty can self-host the open-source rendezvous server 
 
 ### Skinning / Themes
 
-Themes are defined as TOML files in `~/.ezchat/themes/` (built-in themes ship in `ezchat/themes/`).
+Themes are defined as TOML files in `~/.kirbus/themes/` (built-in themes ship in `kirbus/themes/`).
 
 A theme file defines:
 
@@ -338,7 +338,7 @@ title_align = "left"  # left | center | right
 | **ANSI BBS** | Bold ANSI colors, BBS-era feel |
 | **Paper White** | White background, dark text, teletype feel |
 
-Users switch themes with `/theme <name>` at runtime or set a default in `~/.ezchat/config.toml`.
+Users switch themes with `/theme <name>` at runtime or set a default in `~/.kirbus/config.toml`.
 
 ---
 
@@ -346,7 +346,7 @@ Users switch themes with `/theme <name>` at runtime or set a default in `~/.ezch
 
 ### Configuration
 
-Users store their LLM configuration in `~/.ezchat/config.toml`.
+Users store their LLM configuration in `~/.kirbus/config.toml`.
 
 **Cloud provider (default for individual users):**
 
@@ -406,7 +406,7 @@ Concrete implementations: `AnthropicProvider`, `OpenAIProvider`, `OpenAICompatPr
 
 ## Registry Chain
 
-The registry chain is ezchat's built-in blockchain: a purpose-built, append-only Merkle chain that serves as the system-wide user directory. It requires no external node, no gas, no wallet beyond the Ed25519 identity key every user already has.
+The registry chain is kirbus's built-in blockchain: a purpose-built, append-only Merkle chain that serves as the system-wide user directory. It requires no external node, no gas, no wallet beyond the Ed25519 identity key every user already has.
 
 ### What It Stores
 
@@ -497,9 +497,9 @@ class RegistryChain:
 
 ### First-Run Setup
 
-On the very first run, ezchat:
+On the very first run, kirbus:
 
-1. Generates an Ed25519 identity keypair and saves it to `~/.ezchat/identity.key`
+1. Generates an Ed25519 identity keypair and saves it to `~/.kirbus/identity.key`
 2. Syncs the registry chain from the configured rendezvous server
 3. Prompts the user to optionally register a handle
 4. If registering: appends a signed block, broadcasts it to the rendezvous server
@@ -510,21 +510,21 @@ All of this happens before the chat UI opens. Total time: under a second on a no
 
 ```toml
 [registry]
-rendezvous_url = "https://rendezvous.ezchat.example"
+rendezvous_url = "https://rendezvous.kirbus.example"
 auto_register  = false    # prompt on first run; set true to skip the prompt
 msg_anchoring  = false    # opt-in tamper-evident message log
 ```
 
 ---
 
-## ezchat-server
+## kirbus-server
 
-`ezchat-server` is the single command that runs all server-side infrastructure. It is a small, self-contained Python process that ships in the same package as the client — no separate install required.
+`kirbus-server` is the single command that runs all server-side infrastructure. It is a small, self-contained Python process that ships in the same package as the client — no separate install required.
 
 ### What It Runs
 
 ```
-ezchat-server
+kirbus-server
   ├── STUN server        (UDP, RFC 5389)   — endpoint discovery
   ├── TURN relay         (UDP/TCP)         — fallback relay for symmetric NAT
   ├── Rendezvous API     (HTTPS)           — peer registration and lookup
@@ -548,24 +548,24 @@ The only file the server ever writes is the registry chain log. Everything else 
 
 ```bash
 # Install (once)
-pip install ezchat
+pip install kirbus
 
 # Run the server
-ezchat-server
+kirbus-server
 
 # With custom config
-ezchat-server --config /etc/ezchat/server.toml
+kirbus-server --config /etc/kirbus/server.toml
 
 # Or via Docker
-docker run -p 3478:3478/udp -p 8443:8443 ezchat/server
+docker run -p 3478:3478/udp -p 8443:8443 kirbus/server
 ```
 
-On first start, `ezchat-server` generates a self-signed TLS certificate for the HTTPS APIs if none is provided. For production internal use, operators can supply their own cert.
+On first start, `kirbus-server` generates a self-signed TLS certificate for the HTTPS APIs if none is provided. For production internal use, operators can supply their own cert.
 
 ### Server Configuration
 
 ```toml
-# /etc/ezchat/server.toml  (or ~/.ezchat/server.toml)
+# /etc/kirbus/server.toml  (or ~/.kirbus/server.toml)
 
 [server]
 host        = "0.0.0.0"
@@ -580,17 +580,17 @@ log_level   = "warn"     # debug | info | warn | error
 ttl         = 60         # seconds before a peer registration expires
 
 [turn]
-realm       = "ezchat"
+realm       = "kirbus"
 credentials = []         # list of {username, password} for TURN auth
                          # leave empty to allow unauthenticated relay (LAN-only)
 
 [chain]
-data_dir    = "~/.ezchat/server"   # where the chain flat file is written
+data_dir    = "~/.kirbus/server"   # where the chain flat file is written
 ```
 
 ### Server Resource Footprint
 
-`ezchat-server` is intentionally lightweight. On a Mac Mini M2 or comparable machine it uses:
+`kirbus-server` is intentionally lightweight. On a Mac Mini M2 or comparable machine it uses:
 - ~30 MB RAM at idle
 - Negligible CPU (event-driven, no polling)
 - Disk: only the registry chain file, which grows by one small block per user registration
@@ -602,12 +602,12 @@ It is suitable to run as a background service alongside other workloads, or dedi
 **macOS (launchd):**
 
 ```xml
-<!-- ~/Library/LaunchAgents/com.ezchat.server.plist -->
+<!-- ~/Library/LaunchAgents/com.kirbus.server.plist -->
 <plist version="1.0">
 <dict>
-  <key>Label</key><string>com.ezchat.server</string>
+  <key>Label</key><string>com.kirbus.server</string>
   <key>ProgramArguments</key>
-  <array><string>/usr/local/bin/ezchat-server</string></array>
+  <array><string>/usr/local/bin/kirbus-server</string></array>
   <key>RunAtLoad</key><true/>
   <key>KeepAlive</key><true/>
 </dict>
@@ -615,35 +615,35 @@ It is suitable to run as a background service alongside other workloads, or dedi
 ```
 
 ```bash
-launchctl load ~/Library/LaunchAgents/com.ezchat.server.plist
+launchctl load ~/Library/LaunchAgents/com.kirbus.server.plist
 ```
 
 **Linux (systemd):**
 
 ```ini
-# /etc/systemd/system/ezchat-server.service
+# /etc/systemd/system/kirbus-server.service
 [Unit]
-Description=ezchat server
+Description=kirbus server
 After=network.target
 
 [Service]
-ExecStart=/usr/local/bin/ezchat-server
+ExecStart=/usr/local/bin/kirbus-server
 Restart=always
-User=ezchat
+User=kirbus
 
 [Install]
 WantedBy=multi-user.target
 ```
 
 ```bash
-systemctl enable --now ezchat-server
+systemctl enable --now kirbus-server
 ```
 
 ---
 
 ## Offline Message Delivery
 
-When a recipient is offline, ezchat provides two complementary delivery mechanisms. Both are available simultaneously. The IT admin decides which are enabled for their deployment.
+When a recipient is offline, kirbus provides two complementary delivery mechanisms. Both are available simultaneously. The IT admin decides which are enabled for their deployment.
 
 ### Mode 1: Client-Side Queue (always on)
 
@@ -652,7 +652,7 @@ The sender's client stores undelivered messages locally and delivers them direct
 ```
 Alice sends to Bob (offline)
   → direct delivery fails
-    → message written to ~/.ezchat/queue/@bob/
+    → message written to ~/.kirbus/queue/@bob/
       → client registers a presence watch with the rendezvous server
 
 Bob comes online
@@ -664,7 +664,7 @@ Bob comes online
 
 **Presence watch** — rather than polling, Alice's client sends a lightweight subscription to the rendezvous server: `"notify me when @bob registers"`. The server holds this in memory (same 60s TTL mechanism as all rendezvous state). When Bob registers, the server pings Alice's endpoint once and discards the subscription. The server never sees the queued messages.
 
-The local queue survives client restarts. If Alice closes her client before Bob comes online, the queue persists in `~/.ezchat/queue/`. When Alice's client next opens and Bob is online, delivery happens automatically.
+The local queue survives client restarts. If Alice closes her client before Bob comes online, the queue persists in `~/.kirbus/queue/`. When Alice's client next opens and Bob is online, delivery happens automatically.
 
 **The one limitation:** if Alice's client is closed and Bob is online, delivery waits until Alice reopens her client. For a work context where people keep clients open during business hours, this is rarely a problem in practice.
 
@@ -748,12 +748,12 @@ The client auto-detects whether the server has buffering enabled on connect and 
 ### Module
 
 ```
-ezchat/
+kirbus/
 └── delivery/
     ├── queue.py       # local queue read/write, presence watch registration
     └── status.py      # per-message delivery state tracking and UI indicator
 
-ezchat_server/
+kirbus_server/
 └── buffer.py          # server-side message buffer (only loaded if enabled)
 ```
 
@@ -791,14 +791,14 @@ Peer accepts (Y or /accept)
 [FILE]  @alice → report.pdf  2.3 MB          [Y]es / [N]o
 [10:45] @bob:    accepting
 [FILE]  report.pdf  [████████████░░░░]  75%  1.7 / 2.3 MB
-[FILE]  ✓ report.pdf  2.3 MB  → ~/Downloads/ezchat/
+[FILE]  ✓ report.pdf  2.3 MB  → ~/Downloads/kirbus/
 ```
 
 Transfer progress is shown for both sender and receiver. The completion line shows the save path so the user knows exactly where to find the file.
 
 ### Viewing Received Files
 
-Files are saved to `~/Downloads/ezchat/` (configurable). Users open them through whatever tool is natural for their environment — VSCode's Explorer sidebar, macOS Finder, a file manager. ezchat does not attempt to render file content in the terminal.
+Files are saved to `~/Downloads/kirbus/` (configurable). Users open them through whatever tool is natural for their environment — VSCode's Explorer sidebar, macOS Finder, a file manager. kirbus does not attempt to render file content in the terminal.
 
 ### Constraints
 
@@ -837,7 +837,7 @@ Existing message types (`msg`, `ai_share`, `sys`) are unaffected. File chunks us
 
 ```toml
 [files]
-download_dir  = "~/Downloads/ezchat"   # where received files are saved
+download_dir  = "~/Downloads/kirbus"   # where received files are saved
 max_size_mb   = 500                    # refuse incoming offers above this size
 auto_accept   = false                  # always prompt before accepting
 chunk_kb      = 64                     # transfer chunk size
@@ -848,7 +848,7 @@ chunk_kb      = 64                     # transfer chunk size
 ### Module
 
 ```
-ezchat/
+kirbus/
 └── files/
     ├── sender.py      # chunk, encrypt, stream outbound file
     └── receiver.py    # reassemble, decrypt, verify hash, write to disk
@@ -858,7 +858,7 @@ ezchat/
 
 ## Sound Notifications
 
-ezchat plays a sound when chat events occur — a new message arrives, a peer comes online, a file transfer completes. All sounds are configurable; the client ships with a set of built-in retro tones so it works out of the box with no setup.
+kirbus plays a sound when chat events occur — a new message arrives, a peer comes online, a file transfer completes. All sounds are configurable; the client ships with a set of built-in retro tones so it works out of the box with no setup.
 
 ### Triggers
 
@@ -917,7 +917,7 @@ Changes made with `/sound` apply immediately and persist to `config.toml`.
 ### Module
 
 ```
-ezchat/
+kirbus/
 └── sounds/
     ├── player.py          # pygame.mixer wrapper, lazy init, volume control
     ├── registry.py        # resolve built-in name or file path to audio data
@@ -932,12 +932,12 @@ ezchat/
 
 ## Games
 
-Games are delivered through a single always-on `@games` agent running on the server alongside `ezchat-server`. Users interact with it through normal chat messages — no new commands, no UI changes, no separate processes per game. The agent manages all concurrent sessions internally.
+Games are delivered through a single always-on `@games` agent running on the server alongside `kirbus-server`. Users interact with it through normal chat messages — no new commands, no UI changes, no separate processes per game. The agent manages all concurrent sessions internally.
 
 ```bash
 # Server setup — two processes, always running
-ezchat-server                                              # rendezvous + relay
-ezchat --server http://SERVER:8000 --handle games --agent games  # games agent
+kirbus-server                                              # rendezvous + relay
+kirbus --server http://SERVER:8000 --handle games --agent games  # games agent
 ```
 
 `@games` appears in every connected peer's presence panel like any other peer. A user starts a game by messaging it directly:
@@ -959,7 +959,7 @@ games:  North of House. You are facing the north side of a white house...
 
 ### Plugin Architecture
 
-Each game is a self-contained class in `ezchat/games/`. The games agent is a dispatcher that never needs to change when a new game is added — drop a new file in the directory and it is automatically available.
+Each game is a self-contained class in `kirbus/games/`. The games agent is a dispatcher that never needs to change when a new game is added — drop a new file in the directory and it is automatically available.
 
 ```python
 class BaseGame:
@@ -1034,7 +1034,7 @@ The agent tracks which game each sender is currently in, so subsequent messages 
 
 ### Adding a New Game
 
-1. Create `src/ezchat/games/mygame.py` with a class inheriting `BaseGame`
+1. Create `src/kirbus/games/mygame.py` with a class inheriting `BaseGame`
 2. Set `name`, `description`, `min_players`, `max_players`
 3. Implement `start()`, `on_message()`, and `is_over`
 4. The games agent discovers it automatically on next start
@@ -1044,7 +1044,7 @@ No changes to the agent, runner, or any other file required.
 ### Module
 
 ```
-ezchat/
+kirbus/
 └── games/
     ├── __init__.py      # BaseGame, session router, game registry (auto-discovers plugins)
     ├── zork.py          # wraps Jericho Z-machine interpreter
@@ -1054,7 +1054,7 @@ ezchat/
     ├── battleship.py    # pure Python
     └── connect4.py      # pure Python
 
-ezchat/agent/
+kirbus/agent/
     └── games_agent.py   # dispatcher — routes messages to game sessions, never changes
 ```
 
@@ -1062,41 +1062,41 @@ ezchat/agent/
 
 ## Headless Agents
 
-The ezchat protocol places no restrictions on message semantics. A message is an encrypted UTF-8 string — what the receiver does with it is entirely up to the application. ezchat's job is secure delivery and identity; it has no opinion on what is inside the envelope.
+The kirbus protocol places no restrictions on message semantics. A message is an encrypted UTF-8 string — what the receiver does with it is entirely up to the application. kirbus's job is secure delivery and identity; it has no opinion on what is inside the envelope.
 
-This means any device that can run Python can participate as a headless agent: an IoT hub, a build server, a monitoring daemon, a home automation bridge. The agent — or the user connecting to it — defines whatever message format makes sense for their use case. ezchat does not define or impose a command protocol.
+This means any device that can run Python can participate as a headless agent: an IoT hub, a build server, a monitoring daemon, a home automation bridge. The agent — or the user connecting to it — defines whatever message format makes sense for their use case. kirbus does not define or impose a command protocol.
 
 **The protocol does not need to change to support this.** Agents are first-class participants that happen to have no terminal UI.
 
 ### Headless Agent Mode
 
 ```bash
-ezchat --agent handler.py       # run a custom agent script
-ezchat --agent games            # run the built-in games agent
+kirbus --agent handler.py       # run a custom agent script
+kirbus --agent games            # run the built-in games agent
 ```
 
-Starts ezchat without the curses UI. The network stack, encryption, and identity system all function identically to a normal client. When a message arrives, the agent handler is called with the sender handle and the raw message string. If the handler returns a string, it is sent back as a reply.
+Starts kirbus without the curses UI. The network stack, encryption, and identity system all function identically to a normal client. When a message arrives, the agent handler is called with the sender handle and the raw message string. If the handler returns a string, it is sent back as a reply.
 
 **Built-in agents** (no script file needed):
 
 | Agent | Command | Description |
 |---|---|---|
-| `games` | `ezchat --agent games` | Multi-game session manager; see [Games](#games) |
-| `echo` | `ezchat --echo-server` | Reflects every message back; used for testing |
+| `games` | `kirbus --agent games` | Multi-game session manager; see [Games](#games) |
+| `echo` | `kirbus --echo-server` | Reflects every message back; used for testing |
 
 **Custom agents** load a user-supplied Python script:
 
 ```bash
-ezchat --agent /path/to/handler.py --server http://SERVER:8000 --handle my-bot
+kirbus --agent /path/to/handler.py --server http://SERVER:8000 --handle my-bot
 ```
 
-Starts ezchat without the curses UI. When a message arrives, `handler.py` is called with the sender handle and the raw message string. If the handler returns a string, it is sent back as a reply. The content and structure of those strings is entirely the handler's concern.
+Starts kirbus without the curses UI. When a message arrives, `handler.py` is called with the sender handle and the raw message string. If the handler returns a string, it is sent back as a reply. The content and structure of those strings is entirely the handler's concern.
 
 ### Authentication
 
 The `sender` parameter passed to every handler call is not a claim the peer makes about themselves — it is a cryptographically verified identity. The Ed25519 handshake completes before any message is exchanged, proving the connecting peer holds the private key for that handle. A random person cannot connect to your agent and claim to be `@alice` without Alice's private key.
 
-This means ezchat identity is the authentication mechanism. Agents never manage passwords, API keys, or tokens.
+This means kirbus identity is the authentication mechanism. Agents never manage passwords, API keys, or tokens.
 
 **Layer 1 — Connection allowlist (agent config)**
 
@@ -1131,7 +1131,7 @@ Returning `None` for unknown senders rather than an error is intentional — it 
 
 **Why this is stronger than a password**
 
-| | Password | ezchat identity |
+| | Password | kirbus identity |
 |---|---|---|
 | Proof of identity | Something you know | Something you have (private key) |
 | Can be guessed | Yes | No — 256-bit key |
@@ -1143,7 +1143,7 @@ Returning `None` for unknown senders rather than an error is intentional — it 
 
 ```python
 # handler.py — define whatever protocol makes sense for your integration.
-# ezchat delivers the string and a verified sender identity; you decide what to do with both.
+# kirbus delivers the string and a verified sender identity; you decide what to do with both.
 
 def on_message(sender: str, message: str) -> str | None:
     # sender is cryptographically verified — safe to use for authorization decisions
@@ -1152,7 +1152,7 @@ def on_message(sender: str, message: str) -> str | None:
     return response_string_or_none
 ```
 
-The handler is a plain Python file with no ezchat-specific imports. It can use any library, speak any protocol, call any local or remote API. ezchat provides the encrypted transport and verified identity; the handler owns everything above that.
+The handler is a plain Python file with no kirbus-specific imports. It can use any library, speak any protocol, call any local or remote API. kirbus provides the encrypted transport and verified identity; the handler owns everything above that.
 
 ### Agent Registration
 
@@ -1189,11 +1189,11 @@ Connecting to an agent with `/connect @home-hub` works identically to connecting
 ### Running as a Service
 
 ```bash
-pip install ezchat
-ezchat --agent --script /path/to/handler.py --server https://chat.internal:8443
+pip install kirbus
+kirbus --agent --script /path/to/handler.py --server https://chat.internal:8443
 ```
 
-On first run the agent generates its identity keypair and registers its handle. After that it runs silently as a background service using the same launchd/systemd setup described in the ezchat-server section.
+On first run the agent generates its identity keypair and registers its handle. After that it runs silently as a background service using the same launchd/systemd setup described in the kirbus-server section.
 
 ### Configuration
 
@@ -1231,7 +1231,7 @@ Use cases: home automation, device control, sensor queries, anything with discre
 
 **2. Remote Shell Agent**
 
-Forwards messages to a local shell process and streams output back. Turns the ezchat chat window into a secure remote terminal — like SSH or Raspberry Pi Connect, but over the ezchat encrypted channel and gated by `allowed_handles`.
+Forwards messages to a local shell process and streams output back. Turns the kirbus chat window into a secure remote terminal — like SSH or Raspberry Pi Connect, but over the kirbus encrypted channel and gated by `allowed_handles`.
 
 ```python
 import subprocess
@@ -1266,7 +1266,7 @@ From the chat window:
 [10:43] @raspi:   GPIO test passed ✓
 ```
 
-The shell session is E2E encrypted end-to-end and requires no open ports, VPN, or Raspberry Pi Connect account — NAT traversal is handled by ezchat's ICE layer.
+The shell session is E2E encrypted end-to-end and requires no open ports, VPN, or Raspberry Pi Connect account — NAT traversal is handled by kirbus's ICE layer.
 
 Use cases: headless Raspberry Pi access, remote test runners, server administration from the chat terminal.
 
@@ -1306,7 +1306,7 @@ def on_message(sender: str, message: str) -> str | None:
         filename = message.removeprefix("send ").strip()
         path = os.path.join(SHARE_DIR, filename)
         if os.path.exists(path):
-            send_file(path)   # triggers ezchat file transfer to sender
+            send_file(path)   # triggers kirbus file transfer to sender
             return f"Sending {filename}..."
         return f"Not found: {filename}"
 ```
@@ -1317,32 +1317,32 @@ Use cases: NAS access, shared asset libraries, log file retrieval.
 
 ### Community Agent Ecosystem
 
-Because the handler interface is a single Python function with no ezchat-specific imports, agent implementations are trivially packageable and shareable. Anyone can publish a handler to PyPI:
+Because the handler interface is a single Python function with no kirbus-specific imports, agent implementations are trivially packageable and shareable. Anyone can publish a handler to PyPI:
 
 ```bash
-pip install ezchat-agent-homeassistant
-pip install ezchat-agent-shell
-pip install ezchat-agent-cibot
-pip install ezchat-agent-nas
-pip install ezchat-agent-rpi-gpio
+pip install kirbus-agent-homeassistant
+pip install kirbus-agent-shell
+pip install kirbus-agent-cibot
+pip install kirbus-agent-nas
+pip install kirbus-agent-rpi-gpio
 ```
 
-Each package ships a `handler.py` and whatever dependencies it needs. Packages expose a CLI entry point that wraps `ezchat --agent --script`:
+Each package ships a `handler.py` and whatever dependencies it needs. Packages expose a CLI entry point that wraps `kirbus --agent --script`:
 
 ```bash
-ezchat-agent-shell --server https://chat.internal:8443 --handle @raspi
+kirbus-agent-shell --server https://chat.internal:8443 --handle @raspi
 ```
 
 The agent registers on the network and immediately appears in the presence panel of everyone on the server. No new app, no new account, no new protocol.
 
-The ezchat network becomes the control plane for anything headless. ezchat provides the identity, the encryption, and the NAT traversal. The handler provides the integration. Neither side needs to know anything about the other's internals.
+The kirbus network becomes the control plane for anything headless. kirbus provides the identity, the encryption, and the NAT traversal. The handler provides the integration. Neither side needs to know anything about the other's internals.
 
 Community handler authors should always check `sender` before acting on any message — the verified identity is there for exactly this purpose. Well-written community agents document which handles they expect in `allowed_handles` and what per-command authorization they enforce inside the handler.
 
 ### Module
 
 ```
-ezchat/
+kirbus/
 └── agent/
     ├── runner.py      # headless event loop, no curses, calls handler script
     └── loader.py      # load and hot-reload handler.py from disk
@@ -1362,16 +1362,16 @@ This section describes the complete setup for a team that wants fully private, s
   │                                                      │
   │   Mac Mini (server)          User workstations       │
   │  ┌──────────────────┐       ┌──────┐  ┌──────┐      │
-  │  │  ezchat-server   │       │Alice │  │ Bob  │      │
+  │  │  kirbus-server   │       │Alice │  │ Bob  │      │
   │  │                  │       │      │  │      │      │
-  │  │  STUN  :3478     │◄─────►│ezchat│  │ezchat│      │
+  │  │  STUN  :3478     │◄─────►│kirbus│  │kirbus│      │
   │  │  TURN  :3478     │       │      │  │      │      │
   │  │  API   :8443     │       └──────┘  └──────┘      │
   │  │  Chain sync      │                               │
   │  └──────────────────┘       ┌──────┐  ┌──────┐      │
   │                             │Carol │  │Dave  │      │
   │                             │      │  │      │      │
-  │  Each user's machine:       │ezchat│  │ezchat│      │
+  │  Each user's machine:       │kirbus│  │kirbus│      │
   │  Ollama + local LLM         └──────┘  └──────┘      │
   │                                                      │
   └──────────────────────────────────────────────────────┘
@@ -1386,23 +1386,23 @@ This section describes the complete setup for a team that wants fully private, s
 ### Server Setup (one-time, IT / admin)
 
 ```bash
-# 1. Install ezchat on the server machine
-pip install ezchat
+# 1. Install kirbus on the server machine
+pip install kirbus
 
 # 2. Create server config
-mkdir -p /etc/ezchat
-cat > /etc/ezchat/server.toml << EOF
+mkdir -p /etc/kirbus
+cat > /etc/kirbus/server.toml << EOF
 [server]
 host     = "0.0.0.0"
 api_port = 8443
 
 [turn]
 realm       = "company-internal"
-credentials = [{username = "ezchat", password = "changeme"}]
+credentials = [{username = "kirbus", password = "changeme"}]
 EOF
 
 # 3. Start the server (or install as a service — see above)
-ezchat-server --config /etc/ezchat/server.toml
+kirbus-server --config /etc/kirbus/server.toml
 ```
 
 Note the server's internal IP address or hostname (e.g. `chat.company.internal` or `192.168.1.50`). This is the only piece of information users need.
@@ -1410,20 +1410,20 @@ Note the server's internal IP address or hostname (e.g. `chat.company.internal` 
 ### Client Setup (each user)
 
 ```bash
-# 1. Install ezchat
-pip install ezchat
+# 1. Install kirbus
+pip install kirbus
 
 # 2. Run once to generate identity and configure server
-ezchat --server https://192.168.1.50:8443
+kirbus --server https://192.168.1.50:8443
 
-# ezchat will:
+# kirbus will:
 #   - Generate your Ed25519 identity keypair
 #   - Sync the registry chain from the server
 #   - Prompt you to register a handle (e.g. @alice)
 #   - Open the chat UI
 
 # 3. (Optional) Save config so you don't need the flag each time
-cat >> ~/.ezchat/config.toml << EOF
+cat >> ~/.kirbus/config.toml << EOF
 
 [rendezvous]
 url = "https://192.168.1.50:8443"
@@ -1454,7 +1454,7 @@ ollama pull llama3.2
 # It listens on http://localhost:11434 by default
 ```
 
-After this, `/ai <prompt>` in ezchat sends the prompt to the local Ollama instance. Nothing leaves the machine.
+After this, `/ai <prompt>` in kirbus sends the prompt to the local Ollama instance. Nothing leaves the machine.
 
 ### What Stays Completely Private
 
@@ -1465,7 +1465,7 @@ After this, `/ai <prompt>` in ezchat sends the prompt to the local Ollama instan
 | AI prompts and responses | Yes — routed to local Ollama instance |
 | Peer connection endpoints | Yes — rendezvous server is self-hosted |
 | STUN/TURN traffic | Yes — self-hosted server, no external STUN servers contacted |
-| Identity keys | Yes — stored only in `~/.ezchat/identity.key` on each machine |
+| Identity keys | Yes — stored only in `~/.kirbus/identity.key` on each machine |
 
 ### Remote / WFH Users
 
@@ -1482,7 +1482,7 @@ The TURN relay on the server handles NAT traversal for remote connections. Chat 
 
 ## Latency Testing & Benchmarking
 
-Understanding where time is spent is essential for a chat system. ezchat ships with two latency tools: a lightweight inline command for spot-checking RTT during any session, and a full benchmark suite for systematic profiling.
+Understanding where time is spent is essential for a chat system. kirbus ships with two latency tools: a lightweight inline command for spot-checking RTT during any session, and a full benchmark suite for systematic profiling.
 
 ### `/ping` — Inline RTT Measurement
 
@@ -1499,20 +1499,20 @@ Works in `--test` mode (measures echo bot round-trip) and real peer connections 
 
 The encryption component is measured locally (time to encrypt + decrypt a round-trip payload). Network time is total RTT minus encryption overhead.
 
-### `ezchat --bench` — Full Benchmark Suite
+### `kirbus --bench` — Full Benchmark Suite
 
-Runs a structured series of tests against a target and produces a latency report. The target is any reachable ezchat peer — the echo agent is the natural choice since it's a controlled reflector.
+Runs a structured series of tests against a target and produces a latency report. The target is any reachable kirbus peer — the echo agent is the natural choice since it's a controlled reflector.
 
 ```bash
-ezchat --bench --target @raspi
-ezchat --bench --target @echobot        # local echo bot, no network
-ezchat --bench --target localhost:9999  # direct address
+kirbus --bench --target @raspi
+kirbus --bench --target @echobot        # local echo bot, no network
+kirbus --bench --target localhost:9999  # direct address
 ```
 
 Each section of the report only runs if the relevant feature is built. Phase 1 can benchmark crypto only; later phases add their sections automatically.
 
 ```
-ezchat latency report — 2026-03-18 10:42
+kirbus latency report — 2026-03-18 10:42
 ══════════════════════════════════════════════════════
 
 [crypto]  AES-256-GCM encrypt+decrypt
@@ -1553,7 +1553,7 @@ The final bottleneck line identifies the dominant latency source automatically.
 A lightweight timer module underlies both tools. It is available to all other modules for internal instrumentation — any subsystem can record a timing sample without pulling in a heavy profiling dependency.
 
 ```python
-# ezchat/bench/timer.py
+# kirbus/bench/timer.py
 class Timer:
     def start(self, label: str) -> None: ...
     def stop(self, label: str) -> float: ...     # returns elapsed ms
@@ -1578,7 +1578,7 @@ Used internally by the message router, crypto layer, and file transfer to record
 ### Module
 
 ```
-src/ezchat/
+src/kirbus/
 └── bench/
     ├── timer.py       # lightweight timing primitives used across all modules
     ├── ping.py        # /ping command implementation
@@ -1589,21 +1589,21 @@ src/ezchat/
 
 ## Test Mode
 
-ezchat provides two test modes for development and debugging. Both eliminate the need to run two full client instances to simulate a conversation.
+kirbus provides two test modes for development and debugging. Both eliminate the need to run two full client instances to simulate a conversation.
 
 ### Mode 1: Loopback Echo (`--test`)
 
-The simplest mode. A single ezchat process starts with a built-in `@echobot` peer that automatically echoes every message back. No second window, no second process, no network required.
+The simplest mode. A single kirbus process starts with a built-in `@echobot` peer that automatically echoes every message back. No second window, no second process, no network required.
 
 ```bash
-ezchat --test
+kirbus --test
 ```
 
 The UI looks and behaves exactly like a real chat session:
 
 ```
 ┌──────────────────────────────────────────────────────┐
-│ ezchat  [TEST MODE]  connected to @echobot            │
+│ kirbus  [TEST MODE]  connected to @echobot            │
 ├──────────────────────────────────────────────────────┤
 │                                                      │
 │  [10:42] @you:      hello there                      │
@@ -1623,22 +1623,22 @@ The UI looks and behaves exactly like a real chat session:
 **Optional flags:**
 
 ```bash
-ezchat --test --echo-delay 500    # simulate 500ms round-trip latency (ms)
-ezchat --test --echo-script responses.txt  # reply with scripted lines instead of echoing
+kirbus --test --echo-delay 500    # simulate 500ms round-trip latency (ms)
+kirbus --test --echo-script responses.txt  # reply with scripted lines instead of echoing
 ```
 
 `responses.txt` is a plain text file, one response per line. `@echobot` cycles through them in order, then wraps. Useful for testing rendering of varied message lengths, unicode, etc.
 
-`@echobot` is implemented entirely in `ezchat/test/echobot.py` as an `asyncio` task that satisfies the same interface as a real peer connection — no special-casing needed in the message router or UI.
+`@echobot` is implemented entirely in `kirbus/test/echobot.py` as an `asyncio` task that satisfies the same interface as a real peer connection — no special-casing needed in the message router or UI.
 
 ### Mode 2: Headless Echo Agent (`--echo-server`)
 
-A headless process that listens for a real ezchat connection and echoes everything back over the actual network stack. Useful for testing the full path: ICE negotiation, encryption handshake, framing, and message delivery.
+A headless process that listens for a real kirbus connection and echoes everything back over the actual network stack. Useful for testing the full path: ICE negotiation, encryption handshake, framing, and message delivery.
 
 `--echo-server` is the agent runner with a built-in echo handler — the simplest possible handler, shipping inside the package. No script file required:
 
 ```python
-# built-in echo handler (ships inside ezchat/agent/)
+# built-in echo handler (ships inside kirbus/agent/)
 def on_message(sender: str, message: str) -> str | None:
     return message  # ack by echoing
 ```
@@ -1647,10 +1647,10 @@ def on_message(sender: str, message: str) -> str | None:
 
 ```bash
 # Terminal 1 — start the echo agent
-ezchat --echo-server
+kirbus --echo-server
 
 # Terminal 2 — connect to it
-ezchat --connect <host:port>
+kirbus --connect <host:port>
 ```
 
 Logs received/sent message counts to stdout. Exits cleanly when the peer disconnects.
@@ -1670,22 +1670,22 @@ Logs received/sent message counts to stdout. Exits cleanly when the peer disconn
 ### Module
 
 ```
-ezchat/
+kirbus/
 └── test/
     └── echobot.py       # built-in loopback peer for --test mode only
-                         # --echo-server uses ezchat/agent/ with a built-in echo handler
+                         # --echo-server uses kirbus/agent/ with a built-in echo handler
 ```
 
 ---
 
 ## State Persistence
 
-All client state lives under `~/.ezchat/`. Files are human-readable and AI-accessible. SQLite is explicitly avoided — everything is plain text or TOML.
+All client state lives under `~/.kirbus/`. Files are human-readable and AI-accessible. SQLite is explicitly avoided — everything is plain text or TOML.
 
 ### Directory Layout
 
 ```
-~/.ezchat/
+~/.kirbus/
   identity.json          ← Ed25519 identity keypair (created on first run)
   config.toml            ← theme, server URL, and other settings
   channels.toml          ← channel registry: name → members
@@ -1780,9 +1780,9 @@ ip_hint     = "192.168.1.5"
 ### Log Verification
 
 ```bash
-ezchat --verify-log @alice     # verify DM log with alice
-ezchat --verify-log "#general" # verify channel log
-ezchat --verify-log scratch    # verify scratch pad
+kirbus --verify-log @alice     # verify DM log with alice
+kirbus --verify-log "#general" # verify channel log
+kirbus --verify-log scratch    # verify scratch pad
 ```
 
 Loads the relevant pubkeys from `peers.toml` and `identity.json`, re-derives each signature payload, and reports any lines where the signature does not match. A tampered line is immediately detectable because altering any character invalidates the Ed25519 signature.
@@ -1794,7 +1794,7 @@ Loads the relevant pubkeys from `peers.toml` and `identity.json`, re-derives eac
 ### Startup
 
 ```
-ezchat launches
+kirbus launches
   → identity.py: load or generate Ed25519 keypair
     → registry/chain.py: sync chain from rendezvous server
       → [if not registered] prompt user to register handle
@@ -1843,11 +1843,11 @@ User: /ai-share
 ## Module Structure
 
 ```
-ezchat/                          # repo root
+kirbus/                          # repo root
 │
 ├── src/                         # all source code lives here (src layout)
 │   │
-│   ├── ezchat_server/           # server package  →  ezchat-server command
+│   ├── kirbus_server/           # server package  →  kirbus-server command
 │   │   ├── __main__.py          # entry point
 │   │   ├── config.py            # server config loader
 │   │   ├── stun.py              # STUN server (RFC 5389, asyncio UDP)
@@ -1856,9 +1856,9 @@ ezchat/                          # repo root
 │   │   ├── buffer.py            # server-side message buffer (only loaded if enabled)
 │   │   └── chain_api.py         # HTTPS API: chain sync endpoint
 │   │
-│   └── ezchat/                  # client package  →  ezchat command
+│   └── kirbus/                  # client package  →  kirbus command
 │       ├── __main__.py          # entry point, CLI arg parsing
-│       ├── config.py            # load/save ~/.ezchat/config.toml
+│       ├── config.py            # load/save ~/.kirbus/config.toml
 │       ├── identity.py          # Ed25519 keypair generation and persistence
 │       │
 │       ├── network/
@@ -1969,12 +1969,12 @@ Required: `cryptography`, `aiortc`, `aiohttp`. All others are optional and only 
 
 2. ~~**Blockchain chain choice:**~~ Resolved — built-in Merkle registry chain, pure Python, no external node or gas. See [Registry Chain](#registry-chain).
 
-3. ~~**Private deployment / server setup:**~~ Resolved — `ezchat-server` command ships in the same package; single-command server and client setup; AI runs via local Ollama. See [ezchat-server](#ezchat-server) and [Private / Self-Hosted Deployment](#private--self-hosted-deployment).
+3. ~~**Private deployment / server setup:**~~ Resolved — `kirbus-server` command ships in the same package; single-command server and client setup; AI runs via local Ollama. See [kirbus-server](#kirbus-server) and [Private / Self-Hosted Deployment](#private--self-hosted-deployment).
 
-4. ~~**Message history persistence:**~~ Resolved — append-only plain-text logs in `~/.ezchat/history/`, one file per conversation. Each line is signed with the sender's Ed25519 key so log entries cannot be forged without the sender's private key. Peer pubkeys stored in `peers.toml` for offline verification. See [State Persistence](#state-persistence).
+4. ~~**Message history persistence:**~~ Resolved — append-only plain-text logs in `~/.kirbus/history/`, one file per conversation. Each line is signed with the sender's Ed25519 key so log entries cannot be forged without the sender's private key. Peer pubkeys stored in `peers.toml` for offline verification. See [State Persistence](#state-persistence).
 
 5. **Multi-provider AI routing:** Should users be able to configure multiple LLM providers and switch between them mid-session with `/ai-provider <name>`?
 
-6. **Theme discovery:** Should ezchat support downloading community themes from a URL or a simple registry? What format should themes be distributed in?
+6. **Theme discovery:** Should kirbus support downloading community themes from a URL or a simple registry? What format should themes be distributed in?
 
 7. **Key verification UX:** How should users verify they are talking to the right person (short authentication string, QR code, out-of-band fingerprint display)?

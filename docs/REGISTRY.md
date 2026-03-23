@@ -1,9 +1,9 @@
-# ezchat Registry — Architecture
+# kirbus Registry — Architecture
 
 ## Overview
 
-The registry is a standalone service (`ezchat-registry`) that acts as a
-directory of ezchat servers. It is the single stable URL users need to
+The registry is a standalone service (`kirbus-registry`) that acts as a
+directory of kirbus servers. It is the single stable URL users need to
 know. Servers register themselves with the registry when they come online
 and send periodic heartbeats to stay listed.
 
@@ -20,7 +20,7 @@ and send periodic heartbeats to stay listed.
 
 The registry never touches chat traffic. It is purely a directory.
 
-## Registry Service (`ezchat-registry`)
+## Registry Service (`kirbus-registry`)
 
 ### API
 
@@ -65,7 +65,7 @@ Returns the public directory.
 
 ### `POST /servers` (server → registry)
 
-Called by `ezchat-server` on startup and periodically as a heartbeat.
+Called by `kirbus-server` on startup and periodically as a heartbeat.
 
 ```json
 {
@@ -108,7 +108,7 @@ public listing — you must verify first.
 - Registry expires servers that haven't heartbeated in 3 minutes.
 - `online_count` is updated with each heartbeat.
 
-## Server-side changes (`ezchat-server`)
+## Server-side changes (`kirbus-server`)
 
 Add a `[registry]` section to `server.toml`:
 
@@ -140,7 +140,7 @@ DEFAULT_REGISTRY = "https://ezchat.kirbus.ai"
 This means a first-time user only needs:
 
 ```bash
-ezchat --handle alice
+kirbus --handle alice
 ```
 
 No `--server`, no `--registry` — the client contacts the default
@@ -151,7 +151,7 @@ registry, fetches the server list, and presents it in the sidebar.
 Overrides the default registry:
 
 ```bash
-ezchat --registry https://custom.example.com --handle alice
+kirbus --registry https://custom.example.com --handle alice
 ```
 
 Use `--registry none` to disable registry and run in direct/LAN mode.
@@ -161,7 +161,7 @@ Use `--registry none` to disable registry and run in direct/LAN mode.
 Bypasses the registry entirely and connects directly to a known server:
 
 ```bash
-ezchat --server http://10.0.1.50:8000 --handle alice
+kirbus --server http://10.0.1.50:8000 --handle alice
 ```
 
 ### Startup flow
@@ -269,7 +269,7 @@ Modes:
 ### Server-side storage
 
 ```toml
-# ~/.ezchat-server/allowlist.toml
+# ~/.kirbus-server/allowlist.toml
 [allowed.alice]
 ed25519_pub = "veqjN53Zc3uItFAxBO9e2YLU7U6SziQpv2cZ2KryniI="
 added = "2026-03-22T10:30:00"
@@ -290,7 +290,7 @@ access *is* the credential.
 #### How it works
 
 ```bash
-ezchat --handle kirbus --su
+kirbus --handle kirbus --su
 ```
 
 1. Client connects with `--su` flag, which adds `"su": true` to the
@@ -339,10 +339,10 @@ For scripting and automation, the same operations are available via CLI:
 
 | Command | Description |
 |---------|-------------|
-| `ezchat-server allow <pubkey> [handle]` | Manually add a key to the allowlist |
-| `ezchat-server revoke <handle>` | Remove a key from the allowlist |
-| `ezchat-server list-allowed` | Show all allowed keys |
-| `ezchat-server rotate-password` | Change the server password |
+| `kirbus-server allow <pubkey> [handle]` | Manually add a key to the allowlist |
+| `kirbus-server revoke <handle>` | Remove a key from the allowlist |
+| `kirbus-server list-allowed` | Show all allowed keys |
+| `kirbus-server rotate-password` | Change the server password |
 
 ### Client-side changes
 

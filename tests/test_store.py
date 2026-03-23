@@ -1,9 +1,9 @@
-"""Tests for ezchat.store — state persistence with Ed25519-signed logs."""
+"""Tests for kirbus.store — state persistence with Ed25519-signed logs."""
 import pytest
 from pathlib import Path
 
-from ezchat.crypto.keys import generate_identity
-from ezchat.store import log, peers, channels, history
+from kirbus.crypto.keys import generate_identity
+from kirbus.store import log, peers, channels, history
 
 
 # ---------------------------------------------------------------------------

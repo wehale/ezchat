@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""CDK app entry point for ezchat infrastructure."""
+"""CDK app entry point for kirbus infrastructure."""
 import aws_cdk as cdk
 
-from ezchat_stack import EzchatStack
+from kirbus_stack import KirbusStack
 
 app = cdk.App()
-EzchatStack(app, "EzchatStack",
+KirbusStack(app, "KirbusStack",
     env=cdk.Environment(
         account="417079469462",
         region=app.node.try_get_context("region") or "us-east-1",

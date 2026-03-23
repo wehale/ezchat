@@ -1,7 +1,7 @@
 {
   "app": "python3 app.py",
   "context": {
-    "key_name": "ezchat-key",
+    "key_name": "kirbus-key",
     "region": "us-east-1"
   }
 }

@@ -2,15 +2,15 @@
 import asyncio
 import pytest
 
-from ezchat.crypto.keys import generate_identity
-from ezchat.net.connection import connect_to_peer, accept_peer
+from kirbus.crypto.keys import generate_identity
+from kirbus.net.connection import connect_to_peer, accept_peer
 
 
 @pytest.mark.asyncio
 async def test_handshake_both_sides_see_peer(tmp_path, monkeypatch):
     """Both sides complete the handshake and know each other's handle."""
-    import ezchat.store.log as log_mod
-    import ezchat.store.peers as peers_mod
+    import kirbus.store.log as log_mod
+    import kirbus.store.peers as peers_mod
     monkeypatch.setattr(log_mod,   "_HISTORY_DIR", tmp_path / "history")
     monkeypatch.setattr(peers_mod, "_PEERS_PATH",  tmp_path / "peers.toml")
 
@@ -42,8 +42,8 @@ async def test_handshake_both_sides_see_peer(tmp_path, monkeypatch):
 @pytest.mark.asyncio
 async def test_message_round_trip(tmp_path, monkeypatch):
     """alice sends a message, bob receives it with a valid signature."""
-    import ezchat.store.log as log_mod
-    import ezchat.store.peers as peers_mod
+    import kirbus.store.log as log_mod
+    import kirbus.store.peers as peers_mod
     monkeypatch.setattr(log_mod,   "_HISTORY_DIR", tmp_path / "history")
     monkeypatch.setattr(peers_mod, "_PEERS_PATH",  tmp_path / "peers.toml")
 

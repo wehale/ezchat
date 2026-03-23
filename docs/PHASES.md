@@ -1,4 +1,4 @@
-# ezchat Development Phases
+# kirbus Development Phases
 
 A phased roadmap designed to deliver something usable and exciting at the end of every phase. No phase ends with infrastructure alone — each one closes with something you can open, use, and show someone.
 
@@ -6,44 +6,44 @@ A phased roadmap designed to deliver something usable and exciting at the end of
 
 ## Phase 1 — The UI Shell
 
-**Deliverable:** `ezchat --test` opens a fully working retro terminal interface with a built-in echo peer.
+**Deliverable:** `kirbus --test` opens a fully working retro terminal interface with a built-in echo peer.
 
 This phase is intentionally self-contained. No networking, no crypto, no server. Just the interface — built, themed, and alive.
 
 ### What Gets Built
 
-**Curses UI (`ezchat/ui/`)**
+**Curses UI (`kirbus/ui/`)**
 - Three-pane layout: presence panel (left), chat window (center/right), input bar (bottom)
 - Status bar: handle, connection state, online count
 - Chat window: scrollable message history, timestamps, per-sender colour
 - Input bar: line editing, history (up/down arrow), command detection (leading `/`)
 - Presence panel: user list with `●` / `○` online indicators, arrow-key navigation, `Enter` to connect
 
-**Theme Engine (`ezchat/ui/theme.py`)**
+**Theme Engine (`kirbus/ui/theme.py`)**
 - TOML theme loader
 - All five built-in themes: Phosphor Green, Amber Terminal, C64, ANSI BBS, Paper White
 - `/theme <name>` switches live without restart
-- `~/.ezchat/themes/` directory for user-defined themes
+- `~/.kirbus/themes/` directory for user-defined themes
 
-**Echo Bot (`ezchat/test/echobot.py`)**
+**Echo Bot (`kirbus/test/echobot.py`)**
 - `@echobot` responds to every message, every message type
 - `--echo-delay <ms>` simulates round-trip latency
 - `--echo-script <file>` cycles through scripted responses
 - In-process loopback only — for testing over the real network stack, `--echo-server` uses the agent runner with a built-in echo handler (see Phase 10)
 
-**Command Router (`ezchat/commands/router.py`)**
+**Command Router (`kirbus/commands/router.py`)**
 - `/theme <name>` — switch theme
 - `/quit` — exit cleanly
 - `/who` — toggle presence panel
 - Unknown commands shown as error in chat window
 
-**AI Integration (`ezchat/ai/`)**
+**AI Integration (`kirbus/ai/`)**
 - `openai-compat` provider targeting local Ollama (`http://localhost:11434/v1`)
 - `/ai <prompt>` — query local model, display response in `[AI]` style
 - `/ai-share` — echo the AI exchange into the chat (echobot reflects it back)
 - `/ai-clear` — discard cached exchange
 
-**Sound Notifications (`ezchat/sounds/`)**
+**Sound Notifications (`kirbus/sounds/`)**
 - Built-in retro tones: `terminal_bell`, `bbs_ping`, `modem_chirp`, `key_click`
 - Plays on: new message, peer online/offline, file received, AI response ready
 - Fully configurable per-event in `config.toml`; any event can point at a custom `.wav`/`.mp3`
@@ -52,23 +52,23 @@ This phase is intentionally self-contained. No networking, no crypto, no server.
 - `/sound test` plays all configured sounds in sequence
 - `pygame.mixer` for cross-platform playback; lazy-loaded — zero overhead if disabled
 
-**Latency & Benchmarking (`ezchat/bench/`)**
+**Latency & Benchmarking (`kirbus/bench/`)**
 - `timer.py` — lightweight timing primitives available to all modules; zero cost when not benchmarking
 - `ping.py` — `/ping` command; measures echo bot round-trip, breaks out enc overhead vs simulated network time
-- `suite.py` — `ezchat --bench` runner; crypto section available in Phase 1, later sections added automatically as phases are built
+- `suite.py` — `kirbus --bench` runner; crypto section available in Phase 1, later sections added automatically as phases are built
 - Phase 1 bench output: AES-256-GCM encrypt+decrypt across message sizes (256B, 1KB, 64KB)
 
-**First-Run Setup (`ezchat/identity.py`)**
+**First-Run Setup (`kirbus/identity.py`)**
 - Generate Ed25519 keypair on first launch
-- Save to `~/.ezchat/identity.key`
+- Save to `~/.kirbus/identity.key`
 - Prompt for a display handle
-- Create `~/.ezchat/config.toml` with defaults
+- Create `~/.kirbus/config.toml` with defaults
 
 ### What You Can Do at the End of Phase 1
 
 ```bash
-pip install ezchat
-ezchat --test
+pip install kirbus
+kirbus --test
 ```
 
 - Open a glowing retro chat interface
@@ -81,7 +81,7 @@ ezchat --test
 - Change notification sounds with `/sound new_message modem_chirp`
 - Mute everything with `/sound off`
 - Run `/ping` and see echo bot RTT with encryption overhead broken out
-- Run `ezchat --bench` and see the crypto benchmark report
+- Run `kirbus --bench` and see the crypto benchmark report
 
 ### Dependencies
 - `cryptography` (identity key generation only)
@@ -100,15 +100,15 @@ No server required. One side listens, the other connects. Everything is encrypte
 
 ### What Gets Built
 
-**Identity & Handshake (`ezchat/crypto/`)**
+**Identity & Handshake (`kirbus/crypto/`)**
 - X25519 ephemeral key exchange on connect
 - Ed25519 identity signatures — each side proves who they are
 - AES-256-GCM session key derived from shared secret
 - Handshake completes before any chat messages flow
 
-**Network Layer (`ezchat/network/`)**
-- Direct TCP listener (`ezchat --listen <port>`)
-- Direct TCP connector (`ezchat --connect <host:port>`)
+**Network Layer (`kirbus/network/`)**
+- Direct TCP listener (`kirbus --listen <port>`)
+- Direct TCP connector (`kirbus --connect <host:port>`)
 - Length-prefixed JSON envelope framing
 - Clean disconnect and reconnect handling
 
@@ -126,10 +126,10 @@ No server required. One side listens, the other connects. Everything is encrypte
 
 ```bash
 # Terminal 1 — Alice
-ezchat --listen 9000
+kirbus --listen 9000
 
 # Terminal 2 — Bob (same machine or LAN)
-ezchat --connect localhost:9000
+kirbus --connect localhost:9000
 ```
 
 - Two real terminals exchanging encrypted messages
@@ -146,41 +146,41 @@ ezchat --connect localhost:9000
 
 ## Phase 3 — Works Anywhere
 
-**Deliverable:** `ezchat-server` deployed on one machine; clients connect from anywhere including through NAT.
+**Deliverable:** `kirbus-server` deployed on one machine; clients connect from anywhere including through NAT.
 
 ### What Gets Built
 
-**`ezchat-server` (`ezchat_server/`)**
+**`kirbus-server` (`kirbus_server/`)**
 - STUN server (RFC 5389, UDP) — endpoint discovery
 - TURN relay (UDP/TCP) — fallback for symmetric NAT
 - Rendezvous HTTPS API — peer registration and lookup
-- Single command: `ezchat-server --config server.toml`
+- Single command: `kirbus-server --config server.toml`
 - macOS launchd and Linux systemd service files
 
-**ICE / NAT Traversal (`ezchat/network/ice.py`)**
+**ICE / NAT Traversal (`kirbus/network/ice.py`)**
 - `aiortc` ICE negotiation replacing direct TCP
 - Connection attempt order: direct → UDP hole punch → TURN relay
 - Relay warning shown in UI when TURN is active
 
-**Rendezvous Client (`ezchat/network/rendezvous.py`)**
+**Rendezvous Client (`kirbus/network/rendezvous.py`)**
 - Register public endpoint + signed identity on startup
 - Look up a peer by handle to get their endpoint
 - 60-second TTL keepalive
 
 **Updated Connection Flow**
-- `ezchat --server https://chat.company.internal:8443` configures the server
-- `ezchat --connect @bob` replaces `--connect host:port`
-- Server config saved to `~/.ezchat/config.toml` for future sessions
+- `kirbus --server https://chat.company.internal:8443` configures the server
+- `kirbus --connect @bob` replaces `--connect host:port`
+- Server config saved to `~/.kirbus/config.toml` for future sessions
 
 ### What You Can Do at the End of Phase 3
 
 ```bash
 # Server (company Mac Mini or any machine)
-ezchat-server
+kirbus-server
 
 # Client anywhere — home, office, VPN
-ezchat --server https://chat.internal:8443
-ezchat --connect @bob
+kirbus --server https://chat.internal:8443
+kirbus --connect @bob
 ```
 
 - Chat works from home through NAT without port forwarding
@@ -201,13 +201,13 @@ ezchat --connect @bob
 
 ### What Gets Built
 
-**Registry Chain (`ezchat/registry/`)**
+**Registry Chain (`kirbus/registry/`)**
 - Append-only Merkle block chain: handle + Ed25519 pubkey + display name + signature
 - `chain.py` — append, sync, verify, list
 - `block.py` — hash/sign/validate per block
 - `gossip.py` — broadcast new blocks to server and peers
 
-**Chain Sync API (`ezchat_server/chain_api.py`)**
+**Chain Sync API (`kirbus_server/chain_api.py`)**
 - Server stores chain as append-only flat file
 - Clients sync on startup, receive new blocks as they arrive
 - Any peer can verify the entire chain independently
@@ -228,12 +228,12 @@ ezchat --connect @bob
 - `/register` command to register or update at any time
 
 **Updated Server Setup**
-- `ezchat --server <url>` syncs chain and shows who's registered before first chat
+- `kirbus --server <url>` syncs chain and shows who's registered before first chat
 
 ### What You Can Do at the End of Phase 4
 
 ```bash
-ezchat --server https://chat.internal:8443
+kirbus --server https://chat.internal:8443
 ```
 
 - See all registered teammates in the presence panel
@@ -254,20 +254,20 @@ ezchat --server https://chat.internal:8443
 
 ### What Gets Built
 
-**Client-Side Queue (`ezchat/delivery/queue.py`)**
-- Undelivered messages written to `~/.ezchat/queue/@handle/`
+**Client-Side Queue (`kirbus/delivery/queue.py`)**
+- Undelivered messages written to `~/.kirbus/queue/@handle/`
 - Presence watch registered with rendezvous: "notify me when @bob appears"
 - Queue flushed automatically when peer comes online
 - Queue survives client restarts
 
-**Delivery Status (`ezchat/delivery/status.py`)**
+**Delivery Status (`kirbus/delivery/status.py`)**
 - Per-message status indicator in chat window
 - `·` pending — queued, peer not yet seen
 - `⇡` buffered — in server buffer (if enabled)
 - `✓` delivered — confirmed received
 - `✗` expired — TTL elapsed without delivery (server buffer only)
 
-**Server-Side Buffer (`ezchat_server/buffer.py`) — optional**
+**Server-Side Buffer (`kirbus_server/buffer.py`) — optional**
 - Enabled by IT admin in `server.toml`: `buffer.enabled = true`
 - Accepts encrypted ciphertext only — server cannot read content
 - Sealed sender — sender identity hidden from server inside ciphertext
@@ -305,7 +305,7 @@ Phase 1 built AI against the echo bot. This phase wires it into real conversatio
 - `/ai-share` — sends last AI exchange to peer as `[AI-SHARE]` block, rendered distinctly
 - `/ai-clear` — discard cached exchange without sharing
 
-**Provider Abstraction (`ezchat/ai/`)**
+**Provider Abstraction (`kirbus/ai/`)**
 - `AnthropicProvider` — Anthropic API
 - `OpenAIProvider` — OpenAI API
 - `OpenAICompatProvider` — any OpenAI-compatible endpoint (Ollama, LM Studio, llama.cpp)
@@ -340,24 +340,24 @@ base_url = "http://localhost:11434/v1"
 
 ### What Gets Built
 
-**File Sender (`ezchat/files/sender.py`)**
+**File Sender (`kirbus/files/sender.py`)**
 - Read file, compute SHA-256
 - Send `file_offer` envelope to peer
 - On acceptance: chunk file (64 KB default), encrypt each chunk with session key
 - Stream chunks, track progress
 
-**File Receiver (`ezchat/files/receiver.py`)**
+**File Receiver (`kirbus/files/receiver.py`)**
 - Prompt user on incoming `file_offer`
 - Reassemble and decrypt chunks in order
 - Verify final SHA-256 hash
-- Write to `~/Downloads/ezchat/`
+- Write to `~/Downloads/kirbus/`
 - Show completion with full save path
 
 **Progress in Chat Window**
 ```
 [FILE]  @alice → report.pdf  2.3 MB          [Y]es / [N]o
 [FILE]  report.pdf  [████████████░░░░]  75%  1.7 / 2.3 MB
-[FILE]  ✓ report.pdf  2.3 MB  → ~/Downloads/ezchat/
+[FILE]  ✓ report.pdf  2.3 MB  → ~/Downloads/kirbus/
 ```
 
 **TURN Relay Warning**
@@ -372,7 +372,7 @@ base_url = "http://localhost:11434/v1"
 **Config**
 ```toml
 [files]
-download_dir = "~/Downloads/ezchat"
+download_dir = "~/Downloads/kirbus"
 max_size_mb  = 500
 auto_accept  = false
 chunk_kb     = 64
@@ -398,11 +398,11 @@ chunk_kb     = 64
 - Covers all envelope types including file transfer chunks
 
 **Packaging & Deployment**
-- `Dockerfile` and `docker-compose.yml` for `ezchat-server`
+- `Dockerfile` and `docker-compose.yml` for `kirbus-server`
 - macOS `.pkg` installer for the client
 - Proper `pyproject.toml` with pinned dependencies and entry points
 
-**TLS for `ezchat-server`**
+**TLS for `kirbus-server`**
 - Let's Encrypt / ACME support for public deployments
 - Self-signed cert generation for internal deployments (already in Phase 3, hardened here)
 
@@ -434,7 +434,7 @@ Phase 1 (UI Shell)
 Phase 2 (LAN Chat) ──────────────────────────────────┐
     │                                                 │
     ▼                                                 │
-Phase 3 (NAT / ezchat-server)                         │
+Phase 3 (NAT / kirbus-server)                         │
     │                                                 │
     ▼                                                 │
 Phase 4 (Registry Chain + Presence)                   │
@@ -466,7 +466,7 @@ This phase is purely additive — no existing features change. Games are a new m
 
 ### What Gets Built
 
-**Game Framework (`ezchat/games/base.py`)**
+**Game Framework (`kirbus/games/base.py`)**
 - `Game` abstract base class: `render()`, `handle_input()`, `handle_peer()`, `on_start()`, `on_end()`
 - Game loop: takes over the full terminal, suspends chat window display
 - Background message buffering — messages received during a game wait silently and appear on return
@@ -523,22 +523,22 @@ This phase is purely additive — no existing features change. Games are a new m
 
 ## Phase 10 — Headless Agents
 
-**Deliverable:** `ezchat --agent --script handler.py` runs a headless ezchat client that passes every received message to a user-supplied Python script and optionally sends a reply. Any device or service can join the ezchat network as a first-class participant.
+**Deliverable:** `kirbus --agent --script handler.py` runs a headless kirbus client that passes every received message to a user-supplied Python script and optionally sends a reply. Any device or service can join the kirbus network as a first-class participant.
 
-ezchat does not define a command protocol for agents. The handler — and the people or systems connecting to it — define whatever message format makes sense for their integration. ezchat's role is encrypted delivery and identity, nothing more.
+kirbus does not define a command protocol for agents. The handler — and the people or systems connecting to it — define whatever message format makes sense for their integration. kirbus's role is encrypted delivery and identity, nothing more.
 
 This phase requires no protocol changes. It is purely additive: a new execution mode with no UI, and `type: "agent"` added to registry chain blocks.
 
 ### What Gets Built
 
-**Agent Runner (`ezchat/agent/runner.py`)**
-- Full ezchat network and crypto stack, no curses UI
+**Agent Runner (`kirbus/agent/runner.py`)**
+- Full kirbus network and crypto stack, no curses UI
 - On message received: call `handler.on_message(sender, text)`
 - If handler returns a string: send it back as a reply
 - Logs to stdout or file; no terminal interaction required
 - Runs as a long-lived background service via launchd or systemd
 
-**Handler Loader (`ezchat/agent/loader.py`)**
+**Handler Loader (`kirbus/agent/loader.py`)**
 - Loads `handler.py` from disk on startup
 - Hot-reloads when the file changes — update the handler without restarting the agent
 
@@ -548,8 +548,8 @@ This phase requires no protocol changes. It is purely additive: a new execution 
 - `/connect @agent-handle` works identically to connecting to a person
 
 **`--agent` CLI flag**
-- `ezchat --agent --script handler.py`
-- `ezchat --agent --script handler.py --server https://chat.internal:8443`
+- `kirbus --agent --script handler.py`
+- `kirbus --agent --script handler.py --server https://chat.internal:8443`
 
 **Example handlers (`examples/agents/`)**
 - `command_response.py` — command / response archetype template
@@ -586,7 +586,7 @@ def on_message(sender: str, message: str) -> str | None:
 
 ```python
 # handler.py — define whatever protocol your integration requires.
-# ezchat delivers the string and a verified sender identity; you decide what to do with both.
+# kirbus delivers the string and a verified sender identity; you decide what to do with both.
 
 def on_message(sender: str, message: str) -> str | None:
     # sender is cryptographically verified — safe to use for authorization
@@ -598,15 +598,15 @@ def on_message(sender: str, message: str) -> str | None:
 
 ```bash
 # On any always-on machine
-pip install ezchat
-ezchat --agent --script /path/to/handler.py --server https://chat.internal:8443
+pip install kirbus
+kirbus --agent --script /path/to/handler.py --server https://chat.internal:8443
 ```
 
-- Any Python-capable device joins the ezchat network as a named, encrypted participant
+- Any Python-capable device joins the kirbus network as a named, encrypted participant
 - The agent appears in the presence panel alongside teammates with `⚙`
 - Users connect to it like any other peer and exchange whatever strings their integration defines
 - E2E encrypted throughout — the server never sees the content
-- No ezchat protocol changes required
+- No kirbus protocol changes required
 
 ### Dependencies
-- No new dependencies in ezchat — the handler supplies its own
+- No new dependencies in kirbus — the handler supplies its own

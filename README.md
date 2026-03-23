@@ -1,6 +1,6 @@
-# ezchat
+# kirbus
 
-![ezchat screenshot](images/screenshot.png)
+![kirbus screenshot](images/screenshot.png)
 
 A peer-to-peer, end-to-end encrypted terminal chat with built-in AI integration.
 
@@ -16,12 +16,12 @@ A peer-to-peer, end-to-end encrypted terminal chat with built-in AI integration.
 ## Quick start
 
 ```bash
-git clone https://github.com/wehale/ezchat.git
-cd ezchat
-uv run ezchat --handle yourname
+git clone https://github.com/wehale/kirbus.git
+cd kirbus
+uv run kirbus --handle yourname
 ```
 
-That's it. The client connects to the default registry at `ezchat.kirbus.ai`, shows you available servers, and you pick one with Tab + Enter.
+That's it. The client connects to the default registry at `kirbus.ai`, shows you available servers, and you pick one with Tab + Enter.
 
 Requires Python 3.11+ and [uv](https://github.com/astral-sh/uv). Or install system-wide with pip:
 
@@ -29,7 +29,7 @@ Requires Python 3.11+ and [uv](https://github.com/astral-sh/uv). Or install syst
 pip install -e .
 ```
 
-After `pip install`, commands like `ezchat`, `ezchat-server`, and `ezchat-registry` are available directly. If running from the repo with `uv` instead, prefix all commands with `uv run` (e.g. `uv run ezchat`, `uv run ezchat-server`).
+After `pip install`, commands like `kirbus`, `kirbus-server`, and `kirbus-registry` are available directly. If running from the repo with `uv` instead, prefix all commands with `uv run` (e.g. `uv run kirbus`, `uv run kirbus-server`).
 
 ---
 
@@ -37,38 +37,38 @@ After `pip install`, commands like `ezchat`, `ezchat-server`, and `ezchat-regist
 
 ```bash
 # Terminal 1 — listen
-ezchat --handle alice --listen 9000
+kirbus --handle alice --listen 9000
 
 # Terminal 2 — connect
-ezchat --handle bob --connect localhost:9000
+kirbus --handle bob --connect localhost:9000
 ```
 
 ---
 
 ## Registry
 
-The registry is a public directory of ezchat servers. The default registry is `https://ezchat.kirbus.ai`. When you run `ezchat --handle yourname`, it fetches the server list and lets you pick one.
+The registry is a public directory of kirbus servers. The default registry is `https://ezchat.kirbus.ai`. When you run `kirbus --handle yourname`, it fetches the server list and lets you pick one.
 
 To use a different registry:
 
 ```bash
-ezchat --handle yourname --registry https://custom.example.com
+kirbus --handle yourname --registry https://custom.example.com
 ```
 
 To skip the registry and connect directly to a known server:
 
 ```bash
-ezchat --handle yourname --server http://SERVER_IP:8000
+kirbus --handle yourname --server http://SERVER_IP:8000
 ```
 
 ---
 
 ## Running your own server
 
-One person runs `ezchat-server` on a machine with a public IP. Everyone else connects through the registry or via `--server`.
+One person runs `kirbus-server` on a machine with a public IP. Everyone else connects through the registry or via `--server`.
 
 ```bash
-ezchat-server --config server.toml
+kirbus-server --config server.toml
 ```
 
 Open ports **8000** (rendezvous API) and **9001** (TCP relay) in your firewall.
@@ -86,7 +86,7 @@ log_level  = "info"
 [registry]
 url         = "https://ezchat.kirbus.ai"
 name        = "my-server"
-description = "A public ezchat server"
+description = "A public kirbus server"
 secret      = "CHANGE_ME"
 access      = "open"
 public_url  = "http://YOUR_PUBLIC_IP:8000"
@@ -116,7 +116,7 @@ password = "your-server-password"
 Connect from the same machine as the server with the `--su` flag:
 
 ```bash
-ezchat --handle admin --su
+kirbus --handle admin --su
 ```
 
 Su users get admin commands: `/kick`, `/ban`, `/unban`, `/who`.
@@ -126,7 +126,7 @@ Su users get admin commands: `/kick`, `/ban`, `/unban`, `/who`.
 ## Running your own registry
 
 ```bash
-ezchat-registry --config registry.toml
+kirbus-registry --config registry.toml
 ```
 
 Example `registry.toml`:
@@ -148,7 +148,7 @@ Servers register themselves via heartbeat. The registry is stateless — listing
 Encrypt chat logs at rest with a passphrase:
 
 ```bash
-ezchat --handle yourname --encrypt-history
+kirbus --handle yourname --encrypt-history
 ```
 
 First run prompts you to set a passphrase. Subsequent runs prompt for the passphrase to unlock history. The passphrase is never stored — without it, the history files are unreadable.
@@ -156,38 +156,38 @@ First run prompts you to set a passphrase. Subsequent runs prompt for the passph
 To decrypt history for export:
 
 ```bash
-ezchat --decrypt-history @alice > alice.log
-ezchat --decrypt-history '#general' > general.log
+kirbus --decrypt-history @alice > alice.log
+kirbus --decrypt-history '#general' > general.log
 ```
 
 To disable encryption and decrypt everything back to plaintext:
 
 ```bash
-ezchat --handle yourname --no-encrypt-history
+kirbus --handle yourname --no-encrypt-history
 ```
 
 ---
 
 ## Multiple identities
 
-Each `--handle` gets its own data directory (`~/.ezchat-{handle}/`) with its own keypair, peers, and history:
+Each `--handle` gets its own data directory (`~/.kirbus-{handle}/`) with its own keypair, peers, and history:
 
 ```bash
-ezchat --handle work-me
-ezchat --handle personal-me
+kirbus --handle work-me
+kirbus --handle personal-me
 ```
 
 Override with `EZCHAT_HOME`:
 
 ```bash
-EZCHAT_HOME=~/.ezchat-custom ezchat --handle custom
+EZCHAT_HOME=~/.kirbus-custom kirbus --handle custom
 ```
 
 ---
 
 ## Configuration
 
-`~/.ezchat-{handle}/config.toml` — created automatically on first run.
+`~/.kirbus-{handle}/config.toml` — created automatically on first run.
 
 ```toml
 [ui]
@@ -250,7 +250,7 @@ api_key  = ""
 
 ## AI integration
 
-ezchat uses [Ollama](https://ollama.com) for local AI.
+kirbus uses [Ollama](https://ollama.com) for local AI.
 
 ```bash
 # Install Ollama, then pull a model
@@ -272,12 +272,12 @@ Each person's `/ai` runs against their own local model. For cloud AI, point `bas
 
 ## Verify message signatures
 
-Every message is signed with the sender's Ed25519 key and stored in `~/.ezchat-{handle}/history/`.
+Every message is signed with the sender's Ed25519 key and stored in `~/.kirbus-{handle}/history/`.
 
 ```bash
-ezchat --verify-log @alice
-ezchat --verify-log '#general'
-ezchat --verify-log scratch
+kirbus --verify-log @alice
+kirbus --verify-log '#general'
+kirbus --verify-log scratch
 ```
 
 ---
@@ -287,7 +287,7 @@ ezchat --verify-log scratch
 Try the UI without any network setup:
 
 ```bash
-ezchat --test
+kirbus --test
 ```
 
 Simulated peers come online, join channels, and respond to messages.
@@ -305,7 +305,7 @@ pip install -r requirements.txt
 cdk deploy -c key_name=your-ssh-key
 ```
 
-The stack creates an EC2 instance, Elastic IP, security group, nginx reverse proxy, and Let's Encrypt TLS. See `deploy/ezchat_stack.py` for details.
+The stack creates an EC2 instance, Elastic IP, security group, nginx reverse proxy, and Let's Encrypt TLS. See `deploy/kirbus_stack.py` for details.
 
 ---
 

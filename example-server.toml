@@ -8,7 +8,7 @@ log_level  = "info"
 [registry]
 url         = "https://ezchat.kirbus.ai"
 name        = "my-server"
-description = "A public ezchat server"
+description = "A public kirbus server"
 secret      = "CHANGE_ME"              # any random string; protects your listing from hijacking
 access      = "open"
 public_url  = "http://YOUR_PUBLIC_IP:8000"

@@ -1,0 +1,45 @@
+"""Persist channel memberships to ~/.kirbus/channels.toml.
+
+Format:
+    [channels.general]
+    members = ["alice", "bob"]
+    created = "2026-03-19"
+"""
+from __future__ import annotations
+
+import tomllib
+from datetime import date
+from pathlib import Path
+
+from kirbus.home import get_home
+
+def _channels_path() -> Path:
+    return get_home() / "channels.toml"
+
+
+def load_channels() -> dict[str, list[str]]:
+    """Return {channel_name: [member_handle, ...]}."""
+    if not _channels_path().exists():
+        return {}
+    try:
+        data = tomllib.loads(_channels_path().read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+    return {
+        name: attrs.get("members", [])
+        for name, attrs in data.get("channels", {}).items()
+    }
+
+
+def save_channels(channels: dict[str, list[str]]) -> None:
+    """Persist channel memberships to disk."""
+    _channels_path().parent.mkdir(parents=True, exist_ok=True)
+    today = date.today().isoformat()
+    lines = ["# kirbus channels\n\n"]
+    for name in sorted(channels):
+        members = channels[name]
+        members_toml = "[" + ", ".join(f'"{m}"' for m in members) + "]"
+        lines.append(f"[channels.{name}]\n")
+        lines.append(f"members = {members_toml}\n")
+        lines.append(f'created = "{today}"\n\n')
+    _channels_path().write_text("".join(lines), encoding="utf-8")

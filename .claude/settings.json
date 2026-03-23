@@ -24,7 +24,8 @@
       "Bash(ls -la ~/.ezchat*/history/)",
       "Bash(head -5 ~/.ezchat*/history/bob.log)",
       "Bash(head -20 ~/.ezchat*/history/scratch.log)",
-      "Bash(aws sts:*)"
+      "Bash(aws sts:*)",
+      "Bash(find /home/wehale/ezchat -name *.png -o -name *.jpg -o -name *.gif -o -name *.webp)"
     ]
   }
 }

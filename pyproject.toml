@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "ezchat"
+name = "kirbus"
 version = "0.1.0"
 description = "P2P end-to-end encrypted terminal chat with AI integration"
 readme = "README.md"
@@ -15,29 +15,30 @@ classifiers = [
     "Programming Language :: Python :: 3",
 ]
 
-[project.urls]
-Homepage = "https://github.com/wehale/ezchat"
-Repository = "https://github.com/wehale/ezchat"
 dependencies = [
     "cryptography",
     "aiohttp",
     "aiortc",
 ]
 
+[project.urls]
+Homepage = "https://github.com/wehale/kirbus"
+Repository = "https://github.com/wehale/kirbus"
+
 [project.optional-dependencies]
 ai     = ["anthropic", "openai"]
 sounds = ["pygame"]
 games  = ["jericho", "python-chess"]
-server = []   # ezchat_server uses only core deps
+server = []   # kirbus_server uses only core deps
 dev    = ["pytest", "pytest-asyncio"]
 
 [project.scripts]
-ezchat          = "ezchat.__main__:main"
-ezchat-server   = "ezchat_server.__main__:main"
-ezchat-registry = "ezchat_registry.__main__:main"
+kirbus          = "kirbus.__main__:main"
+kirbus-server   = "kirbus_server.__main__:main"
+kirbus-registry = "kirbus_registry.__main__:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/ezchat", "src/ezchat_server", "src/ezchat_registry"]
+packages = ["src/kirbus", "src/kirbus_server", "src/kirbus_registry"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
