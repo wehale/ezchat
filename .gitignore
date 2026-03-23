@@ -10,3 +10,5 @@ venv/
 .mypy_cache/
 server.toml
 registry.toml
+cdk.out/
+cdk.context.json

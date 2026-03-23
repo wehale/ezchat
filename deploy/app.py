@@ -7,6 +7,7 @@ from ezchat_stack import EzchatStack
 app = cdk.App()
 EzchatStack(app, "EzchatStack",
     env=cdk.Environment(
+        account="417079469462",
         region=app.node.try_get_context("region") or "us-east-1",
     ),
 )
