@@ -83,6 +83,10 @@ def main() -> None:
                         help="Registry URL (default: built-in). Use 'none' to disable.")
     parser.add_argument("--su", action="store_true",
                         help="Request superuser (admin) role (requires localhost)")
+    parser.add_argument("--encrypt-history", action="store_true",
+                        help="Enable passphrase encryption for chat history")
+    parser.add_argument("--no-encrypt-history", action="store_true",
+                        help="Disable history encryption and decrypt existing logs")
 
     # --- test mode options ---
     parser.add_argument("--echo-delay",  metavar="MS",   type=int, default=0, help="Simulated echo latency (ms)")

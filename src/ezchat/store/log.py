@@ -116,13 +116,17 @@ def append_message(
     sig: str,
 ) -> None:
     """Append a signed message line to the conversation log. Thread-safe."""
+    from ezchat.store.crypto_history import is_enabled, encrypt_line
+
     _history_dir().mkdir(parents=True, exist_ok=True)
     path = conv_path(conv_key)
-    line = f"[{ts}] {sender}: {text}  sig:{sig}\n"
+    line = f"[{ts}] {sender}: {text}  sig:{sig}"
+    if is_enabled():
+        line = encrypt_line(line)
     lock = _get_lock(path)
     with lock:
         with path.open("a", encoding="utf-8") as f:
-            f.write(line)
+            f.write(line + "\n")
 
 
 # ---------------------------------------------------------------------------
@@ -158,12 +162,19 @@ def read_recent(
     n: int = 500,
 ) -> list[tuple[str, str, str, str, str]]:
     """Return the last n log entries as (full_ts, hhmm, sender, text, sig)."""
+    from ezchat.store.crypto_history import is_encrypted_line, decrypt_line
+
     path = conv_path(conv_key)
     if not path.exists():
         return []
     lines = path.read_text(encoding="utf-8").splitlines()
     result = []
     for line in lines[-n:]:
+        if is_encrypted_line(line):
+            decrypted = decrypt_line(line)
+            if decrypted is None:
+                continue  # wrong key or corrupt
+            line = decrypted
         entry = _parse_line(line)
         if entry:
             result.append(entry)

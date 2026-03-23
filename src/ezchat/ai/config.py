@@ -28,8 +28,9 @@ class UIConfig:
     theme:       str = "ansi_bbs"
     handle:      str = ""
     server:      str = ""   # ezchat-server URL, e.g. "http://my-server.com:8000"
-    registry:    str = ""   # registry URL override
-    last_server: str = ""   # last selected server name from registry
+    registry:        str  = ""      # registry URL override
+    last_server:     str  = ""      # last selected server name from registry
+    encrypt_history: bool = False   # encrypt chat history at rest
 
 
 def _load_toml(path: Path) -> dict:
@@ -59,6 +60,7 @@ def load_ui_config(path: Path | None = None) -> UIConfig:
         theme       = ui.get("theme",       "ansi_bbs"),
         handle      = ui.get("handle",      ""),
         server      = ui.get("server",      ""),
-        registry    = ui.get("registry",    ""),
-        last_server = ui.get("last_server", ""),
+        registry        = ui.get("registry",        ""),
+        last_server     = ui.get("last_server",     ""),
+        encrypt_history = ui.get("encrypt_history", False),
     )

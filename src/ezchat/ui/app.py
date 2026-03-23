@@ -381,4 +381,55 @@ def _curses_main(stdscr: curses.window, args) -> None:
 
 def run(args) -> None:
     """Launch the full curses UI."""
+    _handle_encrypt_history(args)
     curses.wrapper(_curses_main, args)
+
+
+def _handle_encrypt_history(args) -> None:
+    """Handle --encrypt-history / --no-encrypt-history before curses starts."""
+    import getpass
+    from ezchat.ai.config import load_ui_config
+    from ezchat.home import get_home
+    from ezchat.store.crypto_history import (
+        init_encryption, salt_path, encrypt_file, decrypt_file,
+    )
+
+    ui_cfg = load_ui_config()
+    want_encrypt = getattr(args, "encrypt_history", False)
+    want_decrypt = getattr(args, "no_encrypt_history", False)
+    has_salt = salt_path(get_home()).exists()
+    enabled = want_encrypt or (ui_cfg.encrypt_history and not want_decrypt) or has_salt
+
+    if want_decrypt and has_salt:
+        # Decrypt all history and disable
+        passphrase = getpass.getpass("History passphrase (to decrypt): ")
+        init_encryption(passphrase, get_home())
+        history_dir = get_home() / "history"
+        if history_dir.exists():
+            for f in history_dir.glob("*.log"):
+                decrypt_file(f)
+        salt_path(get_home()).unlink(missing_ok=True)
+        print("History decrypted. Encryption disabled.")
+        return
+
+    if not enabled:
+        return
+
+    if not has_salt and want_encrypt:
+        # First time — set passphrase
+        passphrase = getpass.getpass("Set history passphrase: ")
+        confirm = getpass.getpass("Confirm passphrase: ")
+        if passphrase != confirm:
+            print("Passphrases don't match. Encryption not enabled.")
+            raise SystemExit(1)
+        init_encryption(passphrase, get_home())
+        # Encrypt existing history
+        history_dir = get_home() / "history"
+        if history_dir.exists():
+            for f in history_dir.glob("*.log"):
+                encrypt_file(f)
+        print("History encryption enabled.")
+    else:
+        # Existing salt — prompt for passphrase
+        passphrase = getpass.getpass("History passphrase: ")
+        init_encryption(passphrase, get_home())
