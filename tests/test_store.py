@@ -4,6 +4,17 @@ from pathlib import Path
 
 from kirbus.crypto.keys import generate_identity
 from kirbus.store import log, peers, channels, history
+import kirbus.home
+
+
+@pytest.fixture(autouse=True)
+def _isolate_home(tmp_path, monkeypatch):
+    """Point get_home() at a temp dir so every test gets a clean slate."""
+    home = lambda: tmp_path
+    monkeypatch.setattr(kirbus.home, "get_home", home)
+    # Each store module imported get_home locally — patch those too.
+    for mod in (log, peers, channels, history):
+        monkeypatch.setattr(mod, "get_home", home)
 
 
 # ---------------------------------------------------------------------------
@@ -68,9 +79,7 @@ class TestConvPath:
 
 
 class TestAppendReadRecent:
-    def test_append_and_read(self, tmp_path, monkeypatch):
-        monkeypatch.setattr(log, "_HISTORY_DIR", tmp_path)
-
+    def test_append_and_read(self):
         alice = generate_identity("alice")
         ts    = "2026-03-19 14:23:01"
         sig   = log.sign_message(alice.private_key, ts, "alice", "hello")
@@ -85,9 +94,7 @@ class TestAppendReadRecent:
         assert text == "hello"
         assert sig_out == sig
 
-    def test_multiple_entries_order_preserved(self, tmp_path, monkeypatch):
-        monkeypatch.setattr(log, "_HISTORY_DIR", tmp_path)
-
+    def test_multiple_entries_order_preserved(self):
         alice = generate_identity("alice")
         for i in range(5):
             ts  = f"2026-03-19 14:23:0{i}"
@@ -98,9 +105,7 @@ class TestAppendReadRecent:
         assert len(entries) == 5
         assert [e[3] for e in entries] == [f"msg{i}" for i in range(5)]
 
-    def test_read_recent_limit(self, tmp_path, monkeypatch):
-        monkeypatch.setattr(log, "_HISTORY_DIR", tmp_path)
-
+    def test_read_recent_limit(self):
         alice = generate_identity("alice")
         for i in range(10):
             ts  = f"2026-03-19 14:23:{i:02d}"
@@ -112,15 +117,12 @@ class TestAppendReadRecent:
         assert entries[0][3] == "msg7"
         assert entries[2][3] == "msg9"
 
-    def test_missing_log_returns_empty(self, tmp_path, monkeypatch):
-        monkeypatch.setattr(log, "_HISTORY_DIR", tmp_path)
+    def test_missing_log_returns_empty(self):
         assert log.read_recent("nonexistent") == []
 
 
 class TestVerifyLog:
-    def test_all_valid(self, tmp_path, monkeypatch):
-        monkeypatch.setattr(log, "_HISTORY_DIR", tmp_path)
-
+    def test_all_valid(self):
         alice = generate_identity("alice")
         for i in range(3):
             ts  = f"2026-03-19 14:23:0{i}"
@@ -131,9 +133,7 @@ class TestVerifyLog:
         assert all(ok for _, ok, _, _ in results)
         assert len(results) == 3
 
-    def test_tampered_line_detected(self, tmp_path, monkeypatch):
-        monkeypatch.setattr(log, "_HISTORY_DIR", tmp_path)
-
+    def test_tampered_line_detected(self):
         alice = generate_identity("alice")
         ts  = "2026-03-19 14:23:00"
         sig = log.sign_message(alice.private_key, ts, "alice", "original text")
@@ -149,9 +149,7 @@ class TestVerifyLog:
         _lineno, ok, _sender, _raw = results[0]
         assert not ok
 
-    def test_unknown_sender_fails(self, tmp_path, monkeypatch):
-        monkeypatch.setattr(log, "_HISTORY_DIR", tmp_path)
-
+    def test_unknown_sender_fails(self):
         alice = generate_identity("alice")
         ts  = "2026-03-19 14:23:00"
         sig = log.sign_message(alice.private_key, ts, "alice", "hi")
@@ -161,13 +159,10 @@ class TestVerifyLog:
         results = log.verify_log("alice", {})
         assert not results[0][1]
 
-    def test_missing_log_returns_empty(self, tmp_path, monkeypatch):
-        monkeypatch.setattr(log, "_HISTORY_DIR", tmp_path)
+    def test_missing_log_returns_empty(self):
         assert log.verify_log("nobody", {}) == []
 
-    def test_unsigned_entry_fails(self, tmp_path, monkeypatch):
-        monkeypatch.setattr(log, "_HISTORY_DIR", tmp_path)
-
+    def test_unsigned_entry_fails(self):
         alice = generate_identity("alice")
         log.append_message("alice", "2026-03-19 14:23:00", "alice", "hi", "UNSIGNED")
 
@@ -180,9 +175,7 @@ class TestVerifyLog:
 # ---------------------------------------------------------------------------
 
 class TestPeers:
-    def test_upsert_and_load(self, tmp_path, monkeypatch):
-        monkeypatch.setattr(peers, "_PEERS_PATH", tmp_path / "peers.toml")
-
+    def test_upsert_and_load(self):
         alice = generate_identity("alice")
         peers.upsert_peer("alice", alice.public_key, ip_hint="192.168.1.5")
 
@@ -193,9 +186,7 @@ class TestPeers:
         assert rec.ip_hint == "192.168.1.5"
         assert rec.ed25519_pub_b64
 
-    def test_get_pubkeys(self, tmp_path, monkeypatch):
-        monkeypatch.setattr(peers, "_PEERS_PATH", tmp_path / "peers.toml")
-
+    def test_get_pubkeys(self):
         alice = generate_identity("alice")
         peers.upsert_peer("alice", alice.public_key)
 
@@ -206,9 +197,7 @@ class TestPeers:
         sig = log.sign_message(alice.private_key, ts, "alice", "hi")
         assert log.verify_sig(ts, "alice", "hi", sig, pubkeys["alice"])
 
-    def test_upsert_overwrites(self, tmp_path, monkeypatch):
-        monkeypatch.setattr(peers, "_PEERS_PATH", tmp_path / "peers.toml")
-
+    def test_upsert_overwrites(self):
         alice = generate_identity("alice")
         peers.upsert_peer("alice", alice.public_key, ip_hint="10.0.0.1")
         peers.upsert_peer("alice", alice.public_key, ip_hint="10.0.0.2")
@@ -216,13 +205,10 @@ class TestPeers:
         loaded = peers.load_peers()
         assert loaded["alice"].ip_hint == "10.0.0.2"
 
-    def test_missing_file_returns_empty(self, tmp_path, monkeypatch):
-        monkeypatch.setattr(peers, "_PEERS_PATH", tmp_path / "nonexistent.toml")
+    def test_missing_file_returns_empty(self):
         assert peers.load_peers() == {}
 
-    def test_multiple_peers(self, tmp_path, monkeypatch):
-        monkeypatch.setattr(peers, "_PEERS_PATH", tmp_path / "peers.toml")
-
+    def test_multiple_peers(self):
         alice = generate_identity("alice")
         bob   = generate_identity("bob")
         peers.upsert_peer("alice", alice.public_key)
@@ -237,27 +223,21 @@ class TestPeers:
 # ---------------------------------------------------------------------------
 
 class TestChannels:
-    def test_save_and_load(self, tmp_path, monkeypatch):
-        monkeypatch.setattr(channels, "_CHANNELS_PATH", tmp_path / "channels.toml")
-
+    def test_save_and_load(self):
         data = {"general": ["alice", "bob"], "devops": ["alice"]}
         channels.save_channels(data)
 
         loaded = channels.load_channels()
         assert loaded == data
 
-    def test_empty_channels(self, tmp_path, monkeypatch):
-        monkeypatch.setattr(channels, "_CHANNELS_PATH", tmp_path / "channels.toml")
+    def test_empty_channels(self):
         channels.save_channels({})
         assert channels.load_channels() == {}
 
-    def test_missing_file_returns_empty(self, tmp_path, monkeypatch):
-        monkeypatch.setattr(channels, "_CHANNELS_PATH", tmp_path / "nonexistent.toml")
+    def test_missing_file_returns_empty(self):
         assert channels.load_channels() == {}
 
-    def test_members_order_preserved(self, tmp_path, monkeypatch):
-        monkeypatch.setattr(channels, "_CHANNELS_PATH", tmp_path / "channels.toml")
-
+    def test_members_order_preserved(self):
         members = ["carol", "alice", "bob"]
         channels.save_channels({"team": members})
 
@@ -270,17 +250,14 @@ class TestChannels:
 # ---------------------------------------------------------------------------
 
 class TestHistory:
-    def test_save_and_load(self, tmp_path, monkeypatch):
-        monkeypatch.setattr(history, "_HISTORY_PATH", tmp_path / "command_history.txt")
-
+    def test_save_and_load(self):
         cmds = ["/theme phosphor_green", "/channel create dev", "/help"]
         history.save_cmd_history(cmds)
 
         loaded = history.load_cmd_history()
         assert loaded == cmds
 
-    def test_max_lines_enforced(self, tmp_path, monkeypatch):
-        monkeypatch.setattr(history, "_HISTORY_PATH", tmp_path / "command_history.txt")
+    def test_max_lines_enforced(self, monkeypatch):
         monkeypatch.setattr(history, "_MAX_LINES", 5)
 
         cmds = [f"/cmd{i}" for i in range(10)]
@@ -289,13 +266,10 @@ class TestHistory:
         loaded = history.load_cmd_history()
         assert loaded == cmds[-5:]
 
-    def test_missing_file_returns_empty(self, tmp_path, monkeypatch):
-        monkeypatch.setattr(history, "_HISTORY_PATH", tmp_path / "nonexistent.txt")
+    def test_missing_file_returns_empty(self):
         assert history.load_cmd_history() == []
 
-    def test_empty_lines_stripped(self, tmp_path, monkeypatch):
-        monkeypatch.setattr(history, "_HISTORY_PATH", tmp_path / "command_history.txt")
-
+    def test_empty_lines_stripped(self):
         history.save_cmd_history(["/cmd1", "", "/cmd2"])
         loaded = history.load_cmd_history()
         assert "" not in loaded
@@ -308,11 +282,8 @@ class TestHistory:
 # ---------------------------------------------------------------------------
 
 class TestEndToEnd:
-    def test_sign_persist_reload_verify(self, tmp_path, monkeypatch):
+    def test_sign_persist_reload_verify(self):
         """Full cycle: sign a message, write it to disk, reload it, verify the sig."""
-        monkeypatch.setattr(log, "_HISTORY_DIR", tmp_path)
-        monkeypatch.setattr(peers, "_PEERS_PATH", tmp_path / "peers.toml")
-
         alice = generate_identity("alice")
         bob   = generate_identity("bob")
 
@@ -333,11 +304,8 @@ class TestEndToEnd:
         assert ok
         assert sender == "alice"
 
-    def test_tampered_log_detected_end_to_end(self, tmp_path, monkeypatch):
+    def test_tampered_log_detected_end_to_end(self):
         """Tampering with the log file is detectable on verify."""
-        monkeypatch.setattr(log, "_HISTORY_DIR", tmp_path)
-        monkeypatch.setattr(peers, "_PEERS_PATH", tmp_path / "peers.toml")
-
         alice = generate_identity("alice")
         peers.upsert_peer("alice", alice.public_key)
 

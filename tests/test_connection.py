@@ -2,18 +2,20 @@
 import asyncio
 import pytest
 
+import kirbus.home
 from kirbus.crypto.keys import generate_identity
 from kirbus.net.connection import connect_to_peer, accept_peer
 
 
-@pytest.mark.asyncio
-async def test_handshake_both_sides_see_peer(tmp_path, monkeypatch):
-    """Both sides complete the handshake and know each other's handle."""
-    import kirbus.store.log as log_mod
-    import kirbus.store.peers as peers_mod
-    monkeypatch.setattr(log_mod,   "_HISTORY_DIR", tmp_path / "history")
-    monkeypatch.setattr(peers_mod, "_PEERS_PATH",  tmp_path / "peers.toml")
+@pytest.fixture(autouse=True)
+def _isolate_home(tmp_path, monkeypatch):
+    """Point get_home() at a temp dir so every test gets a clean slate."""
+    monkeypatch.setattr(kirbus.home, "get_home", lambda: tmp_path)
 
+
+@pytest.mark.asyncio
+async def test_handshake_both_sides_see_peer():
+    """Both sides complete the handshake and know each other's handle."""
     alice = generate_identity("alice")
     bob   = generate_identity("bob")
 
@@ -40,13 +42,8 @@ async def test_handshake_both_sides_see_peer(tmp_path, monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_message_round_trip(tmp_path, monkeypatch):
+async def test_message_round_trip():
     """alice sends a message, bob receives it with a valid signature."""
-    import kirbus.store.log as log_mod
-    import kirbus.store.peers as peers_mod
-    monkeypatch.setattr(log_mod,   "_HISTORY_DIR", tmp_path / "history")
-    monkeypatch.setattr(peers_mod, "_PEERS_PATH",  tmp_path / "peers.toml")
-
     alice = generate_identity("alice")
     bob   = generate_identity("bob")
 
