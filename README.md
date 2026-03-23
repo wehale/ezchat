@@ -1,5 +1,7 @@
 # ezchat
 
+![ezchat screenshot](images/screenshot.png)
+
 A peer-to-peer, end-to-end encrypted terminal chat with built-in AI integration.
 
 - **Private by design** — messages are encrypted between peers; no server ever sees content
