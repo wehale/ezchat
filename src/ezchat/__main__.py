@@ -3,6 +3,42 @@
 import argparse
 
 
+def _cmd_decrypt_history(args) -> None:  # noqa: ANN001
+    """Decrypt an encrypted history log and print to stdout."""
+    import getpass
+    from ezchat.home import get_home
+    from ezchat.store.crypto_history import init_encryption, salt_path, is_encrypted_line, decrypt_line
+    from ezchat.store.log import conv_path
+
+    conv = args.decrypt_history
+    if conv == "scratch":
+        conv = "\x00scratch"
+
+    if not salt_path(get_home()).exists():
+        print("No encrypted history found (no .salt file)")
+        return
+
+    passphrase = getpass.getpass("History passphrase: ")
+    if not init_encryption(passphrase, get_home()):
+        print("Wrong passphrase.")
+        return
+
+    path = conv_path(conv)
+    if not path.exists():
+        print(f"No log found at {path}")
+        return
+
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if is_encrypted_line(line):
+            decrypted = decrypt_line(line)
+            if decrypted:
+                print(decrypted)
+            else:
+                print(line)  # can't decrypt, print raw
+        else:
+            print(line)
+
+
 def _cmd_verify_log(args) -> None:  # noqa: ANN001
     """Verify Ed25519 signatures in a conversation log."""
     from ezchat.crypto.keys import load_or_create_identity
@@ -102,6 +138,12 @@ def main() -> None:
         help="Verify Ed25519 signatures in a conversation log (e.g. @alice, '#general', scratch)",
     )
 
+    parser.add_argument(
+        "--decrypt-history",
+        metavar="CONV",
+        help="Decrypt an encrypted history log to stdout (e.g. @alice, '#general', scratch)",
+    )
+
     args = parser.parse_args()
 
     # Derive data directory from handle (e.g. ~/.ezchat-alice/)
@@ -109,7 +151,9 @@ def main() -> None:
         from ezchat.home import set_handle
         set_handle(args.handle)
 
-    if args.verify_log:
+    if args.decrypt_history:
+        _cmd_decrypt_history(args)
+    elif args.verify_log:
         _cmd_verify_log(args)
     elif args.test:
         from ezchat.ui.app import run_test_mode
