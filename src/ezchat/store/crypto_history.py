@@ -51,12 +51,38 @@ def load_or_create_salt(home: Path) -> bytes:
     return salt
 
 
-def init_encryption(passphrase: str, home: Path) -> None:
-    """Initialize encryption with a passphrase. Call once at startup."""
+_VERIFY_TOKEN = "ezchat-history-ok"
+
+
+def _verify_path(home: Path) -> Path:
+    return home / "history" / ".verify"
+
+
+def init_encryption(passphrase: str, home: Path) -> bool:
+    """Initialize encryption with a passphrase. Call once at startup.
+
+    Returns True if passphrase is correct (or first time), False if wrong.
+    """
     global _key, _enabled
     salt = load_or_create_salt(home)
     _key = derive_key(passphrase, salt)
+
+    vp = _verify_path(home)
+    if vp.exists():
+        # Verify passphrase against stored token
+        encrypted_token = vp.read_text(encoding="utf-8").strip()
+        result = decrypt_line(encrypted_token)
+        if result != _VERIFY_TOKEN:
+            _key = None
+            _enabled = False
+            return False
+    else:
+        # First time — write verification token
+        vp.parent.mkdir(parents=True, exist_ok=True)
+        vp.write_text(encrypt_line(_VERIFY_TOKEN) + "\n", encoding="utf-8")
+
     _enabled = True
+    return True
 
 
 def is_enabled() -> bool:

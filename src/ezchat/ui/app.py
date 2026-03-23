@@ -403,12 +403,16 @@ def _handle_encrypt_history(args) -> None:
     if want_decrypt and has_salt:
         # Decrypt all history and disable
         passphrase = getpass.getpass("History passphrase (to decrypt): ")
-        init_encryption(passphrase, get_home())
+        if not init_encryption(passphrase, get_home()):
+            print("Wrong passphrase. Cannot decrypt.")
+            raise SystemExit(1)
         history_dir = get_home() / "history"
         if history_dir.exists():
             for f in history_dir.glob("*.log"):
                 decrypt_file(f)
         salt_path(get_home()).unlink(missing_ok=True)
+        from ezchat.store.crypto_history import _verify_path
+        _verify_path(get_home()).unlink(missing_ok=True)
         print("History decrypted. Encryption disabled.")
         return
 
@@ -432,4 +436,7 @@ def _handle_encrypt_history(args) -> None:
     else:
         # Existing salt — prompt for passphrase
         passphrase = getpass.getpass("History passphrase: ")
-        init_encryption(passphrase, get_home())
+        if not init_encryption(passphrase, get_home()):
+            print("Wrong passphrase. History will be unavailable and new messages won't be saved.")
+            print("Press Enter to continue, or Ctrl-C to quit.")
+            input()
