@@ -453,7 +453,14 @@ def _handle_encrypt_history(args) -> None:
                     salt_path(get_home()).unlink(missing_ok=True)
                     from ezchat.store.crypto_history import _verify_path
                     _verify_path(get_home()).unlink(missing_ok=True)
-                    print("History wiped. Starting fresh without encryption.")
+                    print("History wiped. Set a new passphrase.")
+                    passphrase = getpass.getpass("Set history passphrase: ")
+                    confirm = getpass.getpass("Confirm passphrase: ")
+                    if passphrase != confirm:
+                        print("Passphrases don't match. Starting without encryption.")
+                        return
+                    init_encryption(passphrase, get_home())
+                    print("History encryption enabled.")
                     return
                 attempts = 0
             print("Wrong passphrase. Try again, or Ctrl-C to quit.")
