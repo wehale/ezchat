@@ -45,7 +45,12 @@ class Directory:
         password: str = "",
         online_count: int = 0,
     ) -> bool:
-        """Register or update a server.  Returns False if secret mismatch."""
+        """Register or update a server.
+
+        First registration claims the name with the given secret.
+        Subsequent updates must use the same secret (prevents hijacking).
+        Returns False only on secret mismatch for an existing entry.
+        """
         existing = self._servers.get(name)
         if existing and existing.secret != secret:
             return False
