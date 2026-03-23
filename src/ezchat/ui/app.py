@@ -435,8 +435,25 @@ def _handle_encrypt_history(args) -> None:
         print("History encryption enabled.")
     else:
         # Existing salt — prompt for passphrase with retries
+        attempts = 0
         while True:
             passphrase = getpass.getpass("History passphrase: ")
             if init_encryption(passphrase, get_home()):
                 break
+            attempts += 1
+            if attempts >= 3:
+                print("3 failed attempts. Type RESET to wipe encrypted history and start fresh.")
+                print("This will permanently delete all encrypted chat logs.")
+                ans = input("> ").strip()
+                if ans == "RESET":
+                    history_dir = get_home() / "history"
+                    if history_dir.exists():
+                        for f in history_dir.glob("*.log"):
+                            f.unlink()
+                    salt_path(get_home()).unlink(missing_ok=True)
+                    from ezchat.store.crypto_history import _verify_path
+                    _verify_path(get_home()).unlink(missing_ok=True)
+                    print("History wiped. Starting fresh without encryption.")
+                    return
+                attempts = 0
             print("Wrong passphrase. Try again, or Ctrl-C to quit.")
