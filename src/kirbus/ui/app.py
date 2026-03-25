@@ -317,13 +317,8 @@ class UI(DrawMixin, InputMixin):
                         agent=agent_handle,
                     )
                     self.agent_menus[agent_handle] = menu
-                    self.agent_menu = menu
-                    self.agent_session = ""
-                    self.agent_picking_peer = ""
-                    self.active_peer = agent_handle
-                    self.view = "top"
-                    self.focus = "presence"
-                    self.peer_cursor = 0
+                    # Don't auto-switch — just store the menu.
+                    # User enters via ▸ games in the sidebar.
 
                 elif sender == "__agent_session__":
                     import json
