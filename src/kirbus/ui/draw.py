@@ -240,7 +240,7 @@ class DrawMixin:
         if online_peers:
             rows.append(("\x00peer_header", "── online ──", False))
             for handle, _ in sorted(online_peers, key=lambda p: p[0]):
-                rows.append((f"\x00agent_peer:{handle}", f"● {handle}", True))
+                rows.append((f"\x00agent_peer:{handle}", handle, True))
         return rows
 
     def _draw_presence(self) -> None:
@@ -326,7 +326,8 @@ class DrawMixin:
                     attr = self.theme.online if online else self.theme.offline
 
             is_server = key.startswith("\x00srv:")
-            dot      = "" if is_scratch or is_back or is_server else ("●" if online else "○")
+            is_agent_row = key.startswith(("\x00entry:", "\x00pick:", "\x00agent_peer:"))
+            dot      = "" if is_scratch or is_back or is_server or is_agent_row else ("●" if online else "○")
             prefix   = f"{dot} " if dot else ""
             row_text = f"{prefix}{label}"[:inner_w]
             if is_cursor:
