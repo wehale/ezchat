@@ -183,6 +183,13 @@ class DrawMixin:
             return rows
 
         rows: list[tuple[str, str, bool]] = [(SCRATCH_PEER, SCRATCH_LABEL, True)]
+        # Show agent peers (e.g. games agent)
+        agent_menus = getattr(self, "agent_menus", {})
+        if agent_menus:
+            rows.append(("\x00agent_header", "── agents ──", False))
+            for handle in sorted(agent_menus):
+                menu = agent_menus[handle]
+                rows.append((f"\x00agent:{handle}", f"▸ {menu.title}", True))
         if self.channels:
             rows.append(("\x00ch_header", "── channels ──", False))
             for name, ch in sorted(self.channels.items()):
@@ -272,7 +279,8 @@ class DrawMixin:
         rows = self._presence_rows()
         # Headers are not selectable — they start with known prefixes
         _HEADER_PREFIXES = ("\x00ch_", "\x00dm_", "\x00srv_",
-                            "\x00menu_", "\x00peer_", "\x00pick_")
+                            "\x00menu_", "\x00peer_", "\x00pick_",
+                            "\x00agent_header")
         selectable = [i for i, (k, _, _) in enumerate(rows)
                       if not any(k.startswith(p) for p in _HEADER_PREFIXES)]
         if selectable:
@@ -305,7 +313,7 @@ class DrawMixin:
                 attr = self.theme.accent
             elif key.startswith("\x00srv:"):
                 attr = self.theme.online
-            elif key.startswith("\x00entry:"):
+            elif key.startswith(("\x00entry:", "\x00agent:")):
                 attr = self.theme.accent
             elif key.startswith(("\x00pick:", "\x00agent_peer:")):
                 attr = self.theme.online
@@ -326,7 +334,7 @@ class DrawMixin:
                     attr = self.theme.online if online else self.theme.offline
 
             is_server = key.startswith("\x00srv:")
-            is_agent_row = key.startswith(("\x00entry:", "\x00pick:", "\x00agent_peer:"))
+            is_agent_row = key.startswith(("\x00entry:", "\x00pick:", "\x00agent_peer:", "\x00agent:"))
             dot      = "" if is_scratch or is_back or is_server or is_agent_row else ("●" if online else "○")
             prefix   = f"{dot} " if dot else ""
             row_text = f"{prefix}{label}"[:inner_w]

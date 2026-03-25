@@ -87,10 +87,11 @@ class UI(DrawMixin, InputMixin):
         self.is_su: bool = False                 # whether we have su role
 
         # Agent menu state
-        self.agent_menu: AgentMenu | None = None       # current agent menu (if viewing one)
-        self.agent_session: str = ""                    # active session key (e.g. "zork")
-        self.agent_picking_peer: str = ""               # entry key when picking a multiplayer opponent
-        self._pending_game_invite: dict | None = None   # incoming multiplayer invite
+        self.agent_menus: dict[str, AgentMenu] = {}     # agent_handle → menu (persisted)
+        self.agent_menu: AgentMenu | None = None        # currently active menu (if viewing one)
+        self.agent_session: str = ""                     # active session key (e.g. "zork")
+        self.agent_picking_peer: str = ""                # entry key when picking a multiplayer opponent
+        self._pending_game_invite: dict | None = None    # incoming multiplayer invite
 
         self.inbox:     queue.Queue = queue.Queue()
         self.outbox:    queue.Queue = queue.Queue()
@@ -315,6 +316,7 @@ class UI(DrawMixin, InputMixin):
                         entries=entries,
                         agent=agent_handle,
                     )
+                    self.agent_menus[agent_handle] = menu
                     self.agent_menu = menu
                     self.agent_session = ""
                     self.agent_picking_peer = ""

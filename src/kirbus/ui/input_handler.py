@@ -335,7 +335,8 @@ PgUp / PgDn        scroll chat"""
         if self.focus == "presence":
             rows       = self._presence_rows()
             _HDR = ("\x00ch_", "\x00dm_", "\x00srv_",
-                    "\x00menu_", "\x00peer_", "\x00pick_")
+                    "\x00menu_", "\x00peer_", "\x00pick_",
+                    "\x00agent_header")
             selectable = [i for i, (k, _, _) in enumerate(rows)
                           if not any(k.startswith(p) for p in _HDR)]
             if ch == curses.KEY_UP:
@@ -387,6 +388,16 @@ PgUp / PgDn        scroll chat"""
                     self.agent_picking_peer = ""
                     self.focus = "input"
                     curses.curs_set(1)
+                elif key.startswith("\x00agent:"):
+                    # Re-enter an agent menu
+                    agent_handle = key[7:]
+                    agent_menus = getattr(self, "agent_menus", {})
+                    if agent_handle in agent_menus:
+                        self.agent_menu = agent_menus[agent_handle]
+                        self.active_peer = agent_handle
+                        self.agent_session = ""
+                        self.agent_picking_peer = ""
+                        self.peer_cursor = 0
                 elif key.startswith("\x00srv:"):
                     server_name = key[5:]
                     self.outbox.put(("__select_server__", server_name, ""))
@@ -400,6 +411,15 @@ PgUp / PgDn        scroll chat"""
                     self.focus       = "input"
                     curses.curs_set(1)
                 else:
+                    # Check if this peer has a cached agent menu
+                    agent_menus = getattr(self, "agent_menus", {})
+                    if key in agent_menus:
+                        self.agent_menu = agent_menus[key]
+                        self.active_peer = key
+                        self.agent_session = ""
+                        self.agent_picking_peer = ""
+                        self.peer_cursor = 0
+                        return
                     self.active_peer = key
                     self.unread.pop(key, None)
                     if key != SCRATCH_PEER:
