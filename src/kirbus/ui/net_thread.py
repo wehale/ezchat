@@ -42,6 +42,9 @@ def net_thread(ui, args, stop: threading.Event) -> None:
     # Stored as list so inner closures can read the updated value.
     _relay_port = [9001]
 
+    # Auth password — used for password-protected servers
+    _auth_password = ""
+
     # Per-connection send queues — keyed by peer handle.
     # A single dispatcher task reads from ui.outbox and routes items here
     # so that each connection only processes messages meant for it.
@@ -276,7 +279,7 @@ def net_thread(ui, args, stop: threading.Event) -> None:
         port     = listen_port or 9000
         endpoint = f"{pub_ip}:{port}"
         su_flag  = getattr(args, "su", False)
-        result   = await rdv.register(endpoint, su=su_flag)
+        result   = await rdv.register(endpoint, su=su_flag, password=_auth_password)
         if result.get("ok"):
             ui.inbox.put(("system_event",
                 f"registered as {identity.handle} @ {endpoint}"))
@@ -505,8 +508,9 @@ def net_thread(ui, args, stop: threading.Event) -> None:
 
                 # Got a server URL — connect
                 ui.inbox.put(("__server_connected__", server_name, ""))
-                nonlocal server
+                nonlocal server, _auth_password
                 server = srv_url
+                _auth_password = password if password else ""
                 if su_requested:
                     args.su = True
                     # Rewrite URL to localhost so server sees 127.0.0.1
