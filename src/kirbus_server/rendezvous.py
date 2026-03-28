@@ -182,20 +182,30 @@ def online_count() -> int:
     return len(_registry)
 
 
+async def handle_info(request: web.Request) -> web.Response:
+    """Return server metadata (relay port, etc.)."""
+    return web.json_response({
+        "relay_port": request.app["relay_port"],
+    })
+
+
 def make_app(
     ttl: int = 60,
     auth_mode: str = "open",
     auth_password: str = "",
     allowlist=None,
+    relay_port: int = 9001,
 ) -> web.Application:
     app = web.Application()
     app["ttl"] = ttl
     app["auth_mode"] = auth_mode
     app["auth_password"] = auth_password
     app["allowlist"] = allowlist
+    app["relay_port"] = relay_port
     app.router.add_post("/register",         handle_register)
     app.router.add_get( "/lookup/{handle}",  handle_lookup)
     app.router.add_get( "/peers",            handle_peers)
     app.router.add_post("/keepalive",        handle_keepalive)
     app.router.add_get( "/myip",             handle_myip)
+    app.router.add_get( "/info",             handle_info)
     return app

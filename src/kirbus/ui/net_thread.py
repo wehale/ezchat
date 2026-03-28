@@ -38,6 +38,10 @@ def net_thread(ui, args, stop: threading.Event) -> None:
     _connected_lock = asyncio.Lock()
     _disconnect_event: asyncio.Event | None = None
 
+    # Relay port — fetched from server /info, default 9001.
+    # Stored as list so inner closures can read the updated value.
+    _relay_port = [9001]
+
     # Per-connection send queues — keyed by peer handle.
     # A single dispatcher task reads from ui.outbox and routes items here
     # so that each connection only processes messages meant for it.
@@ -213,7 +217,7 @@ def net_thread(ui, args, stop: threading.Event) -> None:
 
         from urllib.parse import urlparse
         relay_host = urlparse(server).hostname or "127.0.0.1"
-        relay_port = 9001
+        relay_port = _relay_port[0]
 
         conn = None
         if endpoint:
@@ -258,7 +262,11 @@ def net_thread(ui, args, stop: threading.Event) -> None:
 
         rdv        = RendezvousClient(server, identity)
         relay_host = urlparse(server).hostname or "127.0.0.1"
-        relay_port = 9001
+
+        # Fetch relay port from server (fall back to 9001 for old servers)
+        info = await rdv.server_info()
+        relay_port = info.get("relay_port", 9001)
+        _relay_port[0] = relay_port
 
         # Discover public IP and register
         pub_ip   = await rdv.my_public_ip() or "127.0.0.1"

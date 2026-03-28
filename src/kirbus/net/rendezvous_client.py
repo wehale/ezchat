@@ -138,6 +138,14 @@ class RendezvousClient:
         except Exception:
             return None
 
+    async def server_info(self) -> dict:
+        """Fetch server metadata (relay_port, etc.)."""
+        loop = asyncio.get_running_loop()
+        try:
+            return await loop.run_in_executor(None, _get, f"{self.base}/info")
+        except Exception:
+            return {}
+
     def start_keepalive(self, endpoint: str) -> None:
         """Start a background task that re-registers every 30 seconds."""
         if self._keepalive_task and not self._keepalive_task.done():

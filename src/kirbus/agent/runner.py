@@ -92,7 +92,8 @@ def run_agent(args) -> None:
 
         rdv        = RendezvousClient(server, identity)
         relay_host = urlparse(server).hostname or "127.0.0.1"
-        relay_port = 9001
+        info = await rdv.server_info()
+        relay_port = info.get("relay_port", 9001)
 
         pub_ip   = await rdv.my_public_ip() or "127.0.0.1"
         endpoint = f"{pub_ip}:0"

@@ -57,7 +57,9 @@ async def run_games_agent(identity, server: str) -> None:
 
     rdv        = RendezvousClient(server, identity)
     relay_host = urlparse(server).hostname or "127.0.0.1"
-    relay_port = 9001
+    # Fetch relay port from server
+    info = await rdv.server_info()
+    relay_port = info.get("relay_port", 9001)
 
     # Register with rendezvous
     pub_ip   = await rdv.my_public_ip() or "127.0.0.1"
