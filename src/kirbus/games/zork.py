@@ -107,3 +107,10 @@ class Zork3Game(_ZorkBase):
     description = "Zork III: The Dungeon Master"
     _title     = "Zork III"
     _filenames = ("zork3.z5", "zork3.z3")
+
+
+class AdventureGame(_ZorkBase):
+    name       = "adventure"
+    description = "Colossal Cave Adventure"
+    _title     = "Adventure"
+    _filenames = ("advent.z5", "advent.z3", "adventure.z5", "adventure.z3")
