@@ -493,6 +493,7 @@ def net_thread(ui, args, stop: threading.Event) -> None:
                     continue
 
                 srv_url = srv.get("url")
+                password = ""
                 if srv.get("access") == "password" and not srv_url:
                     # Need to verify password
                     password = item[2] if len(item) > 2 and item[2] else ""
