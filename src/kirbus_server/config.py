@@ -27,13 +27,15 @@ class AuthSection:
 
 @dataclass
 class ServerConfig:
-    host:        str = "0.0.0.0"
-    api_port:    int = 8000
-    relay_port:  int = 9001
-    ttl:         int = 60
-    log_level:   str = "info"
-    registry:    RegistrySection = field(default_factory=RegistrySection)
-    auth:        AuthSection     = field(default_factory=AuthSection)
+    host:           str = "0.0.0.0"
+    api_port:       int = 8000
+    relay_port:     int = 9001
+    ttl:            int = 60
+    log_level:      str = "info"
+    welcome:        str = ""       # shown to all clients on connect
+    secret_message: str = ""       # shown only after successful auth
+    registry:       RegistrySection = field(default_factory=RegistrySection)
+    auth:           AuthSection     = field(default_factory=AuthSection)
 
 
 def load_server_config(path: Path | None = None) -> ServerConfig:
@@ -47,11 +49,13 @@ def load_server_config(path: Path | None = None) -> ServerConfig:
     r = data.get("registry", {})
     a = data.get("auth", {})
     return ServerConfig(
-        host       = s.get("host",       "0.0.0.0"),
-        api_port   = s.get("api_port",   8000),
-        relay_port = s.get("relay_port", 9001),
-        ttl        = s.get("ttl",        60),
-        log_level  = s.get("log_level",  "info"),
+        host           = s.get("host",           "0.0.0.0"),
+        api_port       = s.get("api_port",       8000),
+        relay_port     = s.get("relay_port",     9001),
+        ttl            = s.get("ttl",            60),
+        log_level      = s.get("log_level",      "info"),
+        welcome        = s.get("welcome",        ""),
+        secret_message = s.get("secret_message", ""),
         registry   = RegistrySection(
             url         = r.get("url",         ""),
             name        = r.get("name",        ""),

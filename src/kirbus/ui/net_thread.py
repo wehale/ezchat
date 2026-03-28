@@ -263,10 +263,13 @@ def net_thread(ui, args, stop: threading.Event) -> None:
         rdv        = RendezvousClient(server, identity)
         relay_host = urlparse(server).hostname or "127.0.0.1"
 
-        # Fetch relay port from server (fall back to 9001 for old servers)
+        # Fetch relay port and welcome message from server
         info = await rdv.server_info()
         relay_port = info.get("relay_port", 9001)
         _relay_port[0] = relay_port
+        welcome = info.get("welcome", "")
+        if welcome:
+            ui.inbox.put(("system_event", welcome))
 
         # Discover public IP and register
         pub_ip   = await rdv.my_public_ip() or "127.0.0.1"
@@ -280,6 +283,9 @@ def net_thread(ui, args, stop: threading.Event) -> None:
             rdv.start_keepalive(endpoint)
             if result.get("su"):
                 ui.inbox.put(("__su_granted__", "", ""))
+            secret = result.get("secret_message", "")
+            if secret:
+                ui.inbox.put(("system_event", secret))
         elif result.get("error") == "password_required":
             ui.inbox.put(("system_event",
                 "Server requires a password. Reconnect with password."))

@@ -126,7 +126,11 @@ async def handle_register(request: web.Request) -> web.Response:
         "su":       is_su,
     }
     _log.info("registered %s → %s", handle, endpoint)
-    return web.json_response({"ok": True, "ttl": ttl, "su": is_su})
+    resp = {"ok": True, "ttl": ttl, "su": is_su}
+    secret = request.app.get("secret_message", "")
+    if secret:
+        resp["secret_message"] = secret
+    return web.json_response(resp)
 
 
 async def handle_lookup(request: web.Request) -> web.Response:
@@ -183,10 +187,12 @@ def online_count() -> int:
 
 
 async def handle_info(request: web.Request) -> web.Response:
-    """Return server metadata (relay port, etc.)."""
-    return web.json_response({
-        "relay_port": request.app["relay_port"],
-    })
+    """Return server metadata (relay port, welcome message, etc.)."""
+    data = {"relay_port": request.app["relay_port"]}
+    welcome = request.app.get("welcome", "")
+    if welcome:
+        data["welcome"] = welcome
+    return web.json_response(data)
 
 
 def make_app(
@@ -195,6 +201,8 @@ def make_app(
     auth_password: str = "",
     allowlist=None,
     relay_port: int = 9001,
+    welcome: str = "",
+    secret_message: str = "",
 ) -> web.Application:
     app = web.Application()
     app["ttl"] = ttl
@@ -202,6 +210,8 @@ def make_app(
     app["auth_password"] = auth_password
     app["allowlist"] = allowlist
     app["relay_port"] = relay_port
+    app["welcome"] = welcome
+    app["secret_message"] = secret_message
     app.router.add_post("/register",         handle_register)
     app.router.add_get( "/lookup/{handle}",  handle_lookup)
     app.router.add_get( "/peers",            handle_peers)

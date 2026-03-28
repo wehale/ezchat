@@ -59,6 +59,8 @@ async def _main(cfg) -> None:
         auth_password=cfg.auth.password,
         allowlist=allowlist,
         relay_port=cfg.relay_port,
+        welcome=cfg.welcome,
+        secret_message=cfg.secret_message,
     )
     runner = web.AppRunner(app)
     await runner.setup()
