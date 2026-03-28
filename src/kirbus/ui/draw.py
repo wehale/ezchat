@@ -381,6 +381,10 @@ class DrawMixin:
                 divider = "─" * pad + f" {label} " + "─" * pad
                 lines.append((None, divider, self.theme.timestamp))
             attr   = self._msg_attr(msg)
+            if msg.kind == "trophy":
+                # Trophy messages render raw — no prefix, no wrapping, centered
+                lines.append((msg, msg.text, attr))
+                continue
             prefix = f"[{msg.timestamp}] {msg.sender}: "
             if msg.kind == "preformatted":
                 # First line gets the prefix, remaining lines are indented
@@ -403,6 +407,7 @@ class DrawMixin:
     def _msg_attr(self, msg: Message) -> int:
         if msg.kind == "system":       return self.theme.system
         if msg.kind == "error":        return self.theme.error
+        if msg.kind == "trophy":       return self.theme.accent | curses.A_BOLD | curses.A_BLINK
         if msg.kind == "preformatted": return self.theme.chat
         if msg.sender == self.handle:  return self.theme.accent
         return self.theme.chat

@@ -288,7 +288,7 @@ def net_thread(ui, args, stop: threading.Event) -> None:
                 ui.inbox.put(("__su_granted__", "", ""))
             secret = result.get("secret_message", "")
             if secret:
-                ui.inbox.put(("system_event", secret))
+                ui.inbox.put(("__secret_message__", secret))
         elif result.get("error") == "password_required":
             ui.inbox.put(("system_event",
                 "Server requires a password. Reconnect with password."))

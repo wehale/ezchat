@@ -190,6 +190,20 @@ class UI(DrawMixin, InputMixin):
         ts, date = self._now()
         self.messages.append(Message(ts, "system", text, "error", date=date))
 
+    def _show_trophy(self, text: str) -> None:
+        ts, date = self._now()
+        lines = [
+            "",
+            "╔══════════════════════════════════════╗",
+            "║            🏆 UNLOCKED 🏆            ║",
+            "��══════════════════════════════════════╣",
+            f"║  {text:^36}  ��",
+            "╚══════════════════════════════════════╝",
+            "",
+        ]
+        for line in lines:
+            self.messages.append(Message(ts, "system", line, "trophy", date=date))
+
     @staticmethod
     def _detect_preformatted(text: str) -> bool:
         """Return True if text looks like preformatted content (game boards, ASCII art)."""
@@ -293,6 +307,9 @@ class UI(DrawMixin, InputMixin):
                 elif sender == "__server_connected__":
                     self.connected_server = text
                     self._system(f"Connected to server: {text}")
+
+                elif sender == "__secret_message__":
+                    self._show_trophy(text)
 
                 elif sender == "__su_granted__":
                     self.is_su = True
