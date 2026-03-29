@@ -88,17 +88,19 @@ async def run_games_agent(identity, server: str) -> None:
                 )
                 await writer.drain()
                 line = await reader.readline()
+                if not line or not line.strip():
+                    # Relay closed connection (timeout) — silently retry
+                    writer.close()
+                    continue
                 resp = json.loads(line.decode().strip())
                 if not resp.get("ok"):
                     writer.close()
-                    await asyncio.sleep(1)
                     continue
                 conn = await accept_peer(reader, writer, identity)
                 asyncio.create_task(agent.handle_conn(conn))
             except asyncio.CancelledError:
                 return
-            except Exception as exc:
-                _log.warning("relay error: %s", exc)
-                await asyncio.sleep(5)
+            except Exception:
+                await asyncio.sleep(1)
 
     await _relay_loop()

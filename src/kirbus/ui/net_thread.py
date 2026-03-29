@@ -204,6 +204,9 @@ def net_thread(ui, args, stop: threading.Event) -> None:
         writer.write((_json.dumps({"role": "wait", "handle": my_handle}) + "\n").encode())
         await writer.drain()
         line = await reader.readline()
+        if not line or not line.strip():
+            writer.close()
+            raise ConnectionError("relay: connection closed (timeout)")
         resp = _json.loads(line.decode().strip())
         if not resp.get("ok"):
             writer.close()
@@ -345,8 +348,8 @@ def net_thread(ui, args, stop: threading.Event) -> None:
                             pass
                 except asyncio.CancelledError:
                     return
-                except Exception as exc:
-                    ui.inbox.put(("system_event", f"relay error: {exc}"))
+                except Exception:
+                    # Relay timeout/disconnect — silently retry
                     await asyncio.sleep(_RETRY_DELAY)
 
         relay_task = _spawn(_relay_listen_loop(), name="relay-listen")
