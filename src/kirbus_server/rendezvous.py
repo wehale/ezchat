@@ -40,6 +40,15 @@ _registry: dict[str, dict[str, Any]] = {}
 # Agent menus: handle → menu JSON (title, entries)
 _agent_menus: dict[str, dict] = {}
 
+# Metrics
+_metrics = {
+    "total_connections": 0,
+    "unique_handles": set(),
+    "unique_ips": set(),
+    "failed_auth": 0,
+}
+_connection_log: list[dict] = []  # kept in memory, also written to file
+
 
 def _b64d(s: str) -> bytes:
     return base64.b64decode(s)
@@ -76,6 +85,7 @@ async def handle_register(request: web.Request) -> web.Response:
 
     # Verify the signature is valid for the submitted pubkey
     if not _verify_sig(pubkey, sig, handle, pubkey, endpoint, ts):
+        _metrics["failed_auth"] += 1
         return web.json_response({"error": "invalid signature"}, status=403)
 
     # --- access control ---
@@ -93,6 +103,7 @@ async def handle_register(request: web.Request) -> web.Response:
                     status=403,
                 )
             if password != request.app.get("auth_password", ""):
+                _metrics["failed_auth"] += 1
                 return web.json_response({"error": "invalid password"}, status=403)
             # Password correct — add to allowlist for future connections
             allowlist.add(handle, pubkey, via="password")
@@ -129,6 +140,30 @@ async def handle_register(request: web.Request) -> web.Response:
         "su":       is_su,
     }
     _log.info("registered %s → %s", handle, endpoint)
+
+    # Track metrics
+    peer = request.transport.get_extra_info("peername")
+    ip = peer[0] if peer else "unknown"
+    _metrics["total_connections"] += 1
+    _metrics["unique_handles"].add(handle)
+    _metrics["unique_ips"].add(ip)
+    import datetime as _dt
+    entry = {
+        "time": _dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "handle": handle,
+        "ip": ip,
+        "endpoint": endpoint,
+    }
+    _connection_log.append(entry)
+    # Append to log file
+    log_path = request.app.get("metrics_log")
+    if log_path:
+        try:
+            with open(log_path, "a") as f:
+                f.write(f"{entry['time']}  {handle:20s}  {ip:15s}  {endpoint}\n")
+        except Exception:
+            pass
+
     resp = {"ok": True, "ttl": ttl, "su": is_su}
     secret = request.app.get("secret_message", "")
     if secret:
@@ -189,6 +224,19 @@ def online_count() -> int:
     return len(_registry)
 
 
+async def handle_stats(request: web.Request) -> web.Response:
+    """Return server metrics."""
+    _purge_expired()
+    return web.json_response({
+        "total_connections": _metrics["total_connections"],
+        "unique_handles": len(_metrics["unique_handles"]),
+        "unique_ips": len(_metrics["unique_ips"]),
+        "failed_auth": _metrics["failed_auth"],
+        "currently_online": len(_registry),
+        "recent": _connection_log[-20:],  # last 20 connections
+    })
+
+
 async def handle_agent_menu(request: web.Request) -> web.Response:
     """Register or update an agent's menu."""
     try:
@@ -221,6 +269,7 @@ def make_app(
     relay_port: int = 9001,
     welcome: str = "",
     secret_message: str = "",
+    metrics_log: str = "",
 ) -> web.Application:
     app = web.Application()
     app["ttl"] = ttl
@@ -230,11 +279,13 @@ def make_app(
     app["relay_port"] = relay_port
     app["welcome"] = welcome
     app["secret_message"] = secret_message
+    app["metrics_log"] = metrics_log
     app.router.add_post("/register",         handle_register)
     app.router.add_get( "/lookup/{handle}",  handle_lookup)
     app.router.add_get( "/peers",            handle_peers)
     app.router.add_post("/keepalive",        handle_keepalive)
     app.router.add_get( "/myip",             handle_myip)
     app.router.add_get( "/info",             handle_info)
+    app.router.add_get( "/stats",            handle_stats)
     app.router.add_post("/agent-menu",       handle_agent_menu)
     return app

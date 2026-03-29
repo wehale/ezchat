@@ -53,6 +53,7 @@ async def _main(cfg) -> None:
         log.info("auth mode: %s  (%d keys in allowlist)", cfg.auth.mode, len(allowlist.list_all()))
 
     # --- rendezvous HTTP API ---
+    metrics_log = f"connections-{cfg.registry.name or 'server'}.log"
     app    = make_app(
         ttl=cfg.ttl,
         auth_mode=cfg.auth.mode,
@@ -61,6 +62,7 @@ async def _main(cfg) -> None:
         relay_port=cfg.relay_port,
         welcome=cfg.welcome,
         secret_message=cfg.secret_message,
+        metrics_log=metrics_log,
     )
     runner = web.AppRunner(app)
     await runner.setup()
