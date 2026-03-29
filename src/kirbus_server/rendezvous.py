@@ -69,6 +69,9 @@ def _purge_expired() -> None:
     expired = [h for h, v in _registry.items() if v["expires"] <= now]
     for h in expired:
         del _registry[h]
+        if h in _agent_menus:
+            del _agent_menus[h]
+            _log.debug("expired agent menu: %s", h)
         _log.debug("expired: %s", h)
 
 
