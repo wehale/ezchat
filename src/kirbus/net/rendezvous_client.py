@@ -93,7 +93,7 @@ class RendezvousClient:
             _log.debug("registered %s → %s: %s", handle, endpoint, result)
             return result
         except Exception as exc:
-            _log.warning("register failed: %s", exc)
+            _log.debug("register failed: %s", exc)
             return {"ok": False, "error": str(exc)}
 
     async def lookup(self, handle: str) -> tuple[str, str] | None:
@@ -107,10 +107,10 @@ class RendezvousClient:
         except urllib.error.HTTPError as exc:
             if exc.code == 404:
                 return None
-            _log.warning("lookup %s failed: %s", handle, exc)
+            _log.debug("lookup %s failed: %s", handle, exc)
             return None
         except Exception as exc:
-            _log.warning("lookup %s failed: %s", handle, exc)
+            _log.debug("lookup %s failed: %s", handle, exc)
             return None
 
     async def peers(self) -> list[dict]:
@@ -125,8 +125,7 @@ class RendezvousClient:
                 f"{self.base}/peers?me={self.identity.handle}"
             )
             return result.get("peers", [])
-        except Exception as exc:
-            _log.warning("peers fetch failed: %s", exc)
+        except Exception:
             return []
 
     async def my_public_ip(self) -> str | None:
@@ -155,7 +154,7 @@ class RendezvousClient:
                 {"handle": handle, "menu": menu},
             )
         except Exception as exc:
-            _log.warning("failed to register agent menu: %s", exc)
+            _log.debug("failed to register agent menu: %s", exc)
 
     def start_keepalive(self, endpoint: str) -> None:
         """Start a background task that re-registers every 30 seconds."""
