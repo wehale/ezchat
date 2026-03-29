@@ -401,7 +401,7 @@ class State:
 # ---------------------------------------------------------------------------
 class AdventureGame(BaseGame):
     name        = "adventure"
-    description = "Colossal Cave Adventure"
+    description = "Adventure"
     min_players = 1
     max_players = 1
 
