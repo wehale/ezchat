@@ -59,6 +59,16 @@ def run_agent(args) -> None:
             print("\ngames agent stopped.")
         return
 
+    # --- built-in: home ---
+    if agent_name.lower() == "home":
+        from kirbus.agent.home_agent import run_home_agent
+        print(f"Starting home agent as @{identity.handle} → {server}")
+        try:
+            asyncio.run(run_home_agent(identity, server))
+        except KeyboardInterrupt:
+            print("\nhome agent stopped.")
+        return
+
     # --- built-in: echo (alias) ---
     if agent_name.lower() == "echo":
         run_builtin_echo(args)
