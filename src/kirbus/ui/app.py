@@ -347,9 +347,13 @@ class UI(DrawMixin, InputMixin):
                     if state == "started":
                         self.agent_session = data.get("key", "")
                         self.agent_picking_peer = ""
+                        self.messages.clear()
+                        self.scroll = 0
                     elif state == "ended":
                         self.agent_session = ""
                         self.agent_picking_peer = ""
+                        self.messages.clear()
+                        self.scroll = 0
 
                 elif sender == "__game_invite__":
                     import json

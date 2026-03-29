@@ -359,6 +359,8 @@ PgUp / PgDn        scroll chat"""
                         self.outbox.put((menu.agent, "\x00back\x00"))
                         self.agent_session = ""
                         self.peer_cursor = 0
+                        self.messages.clear()
+                        self.scroll = 0
                     elif getattr(self, "agent_picking_peer", ""):
                         # Cancel peer pick → back to menu
                         self.agent_picking_peer = ""
