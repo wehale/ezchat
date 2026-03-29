@@ -229,7 +229,7 @@ def _ai_attack_player(ai: Realm, player: Realm) -> str | None:
 # ---------------------------------------------------------------------------
 class BarrenRealmsGame(BaseGame):
     name        = "realm"
-    description = "Kirbus Barren Realms"
+    description = "Barren Realms"
     min_players = 1
     max_players = 1
 

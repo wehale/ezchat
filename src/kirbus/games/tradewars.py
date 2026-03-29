@@ -215,7 +215,7 @@ def _load_game(player: str) -> tuple[GameState, dict[int, Port]] | None:
 # ---------------------------------------------------------------------------
 class TradeWarsGame(BaseGame):
     name        = "tradewars"
-    description = "Kirbus Trade Wars"
+    description = "Trade Wars"
     min_players = 1
     max_players = 1
 
