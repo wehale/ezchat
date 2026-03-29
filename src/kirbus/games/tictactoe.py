@@ -54,7 +54,7 @@ class TicTacToeGame(BaseGame):
         return (
             "Tic-tac-toe: You (X) vs Machine (O)\n"
             f"{self._render()}\n"
-            "Your turn — enter a number 1-9"
+            "Your turn — enter 1-9, or 'watch' to let the machine play itself"
         )
 
     def on_message(self, sender: str, text: str) -> list[tuple[str, str]]:
@@ -63,8 +63,11 @@ class TicTacToeGame(BaseGame):
             self._over = True
             return [(sender, "Game abandoned.")]
 
+        if text.lower() == "watch":
+            return [(sender, self._autoplay())]
+
         if not text.isdigit() or not (1 <= int(text) <= 9):
-            return [(sender, "Enter a number 1-9.")]
+            return [(sender, "Enter a number 1-9, or 'watch' to let the machine play itself.")]
 
         idx = int(text) - 1
         if self._board[idx] != " ":
@@ -98,6 +101,32 @@ class TicTacToeGame(BaseGame):
     @property
     def is_over(self) -> bool:
         return self._over
+
+    def _autoplay(self) -> str:
+        """Machine plays itself — WarGames style."""
+        self._board = [" "] * 9
+        lines = ["The machine plays itself...\n"]
+        turn = "X"
+        while " " in self._board:
+            move = _ai_move(self._board)
+            if move == -1:
+                break
+            self._board[move] = turn
+            lines.append(self._render())
+            winner = self._check_winner()
+            if winner:
+                lines.append(f"\n{winner} wins.\n")
+                break
+            turn = "O" if turn == "X" else "X"
+            lines.append("")
+        else:
+            if not self._check_winner():
+                lines.append("\nDraw.")
+
+        lines.append("\nA STRANGE GAME.")
+        lines.append("THE ONLY WINNING MOVE IS NOT TO PLAY.")
+        self._over = True
+        return "\n".join(lines)
 
     def _render(self) -> str:
         b = self._board
