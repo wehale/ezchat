@@ -47,7 +47,7 @@ class NuclearWarGame(BaseGame):
             "You control the United States nuclear arsenal.\n"
             f"Survive {_MAX_TURNS} turns without losing all your cities.\n\n"
             "Commands: status, launch <nation> <qty>, defend,\n"
-            "          diplomacy <nation>, intel, end turn, quit\n\n"
+            "          diplomacy <nation>, intel, end turn, watch, quit\n\n"
             + self._status_brief()
         )
 
@@ -66,6 +66,9 @@ class NuclearWarGame(BaseGame):
     def _handle(self, text: str) -> str:
         parts = text.split()
         cmd = parts[0]
+
+        if cmd == "watch":
+            return self._autoplay()
 
         if cmd in ("status", "st"):
             return self._status_full()
@@ -92,6 +95,85 @@ class NuclearWarGame(BaseGame):
             )
 
         return "Unknown command. Type 'help' for options."
+
+    def _autoplay(self) -> str:
+        """The machine plays all sides — WarGames finale."""
+        # Set up all nations including USA as AI
+        nations = {"USA": {
+            "missiles": self._missiles, "defenses": self._defenses,
+            "cities": self._cities, "population": self._population, "alive": True,
+        }}
+        for n, d in self._enemies.items():
+            nations[n] = dict(d)
+            nations[n]["population"] = nations[n]["cities"] * 25
+
+        lines = [
+            "THE MACHINE PLAYS ALL SIDES...\n",
+            "SIMULATION RUNNING...\n",
+        ]
+
+        for turn in range(1, 16):
+            alive = [n for n, d in nations.items() if d["alive"]]
+            if len(alive) <= 1:
+                break
+
+            exchanges = []
+            for attacker_name in alive:
+                att = nations[attacker_name]
+                if att["missiles"] <= 0:
+                    continue
+                # Pick a random target
+                targets = [n for n in alive if n != attacker_name]
+                if not targets:
+                    continue
+                target_name = random.choice(targets)
+                tgt = nations[target_name]
+
+                qty = random.randint(1, min(4, att["missiles"]))
+                att["missiles"] -= qty
+                intercepted = min(qty, random.randint(0, tgt.get("defenses", 0)))
+                hits = qty - intercepted
+                cities_lost = min(hits, tgt["cities"])
+                pop_lost = cities_lost * random.randint(15, 30)
+                tgt["cities"] = max(0, tgt["cities"] - cities_lost)
+                tgt["population"] = max(0, tgt.get("population", 0) - pop_lost)
+
+                if cities_lost > 0:
+                    exchanges.append(f"  {attacker_name} → {target_name}: {qty} launched, {cities_lost} cities destroyed")
+
+                if tgt["cities"] <= 0:
+                    tgt["alive"] = False
+                    exchanges.append(f"  *** {target_name} DESTROYED ***")
+
+            if exchanges:
+                lines.append(f"Turn {turn}:")
+                lines.extend(exchanges)
+                lines.append("")
+
+        # Final tally
+        lines.append("SIMULATION COMPLETE.\n")
+        lines.append("RESULTS:")
+        total_dead = 0
+        for name, data in nations.items():
+            status = "DESTROYED" if not data["alive"] else f"{data['cities']} cities, {data.get('population', 0)}M people"
+            lines.append(f"  {name:8s} — {status}")
+            if not data["alive"]:
+                total_dead += 250
+            else:
+                original_pop = 250 if name == "USA" else data.get("population", 0) + 100
+                total_dead += max(0, original_pop - data.get("population", 0))
+
+        lines.append(f"\nESTIMATED CASUALTIES: {total_dead}M+")
+        lines.append("")
+        lines.append(".........")
+        lines.append("")
+        lines.append("A STRANGE GAME.")
+        lines.append("THE ONLY WINNING MOVE IS NOT TO PLAY.")
+        lines.append("")
+        lines.append("HOW ABOUT A NICE GAME OF CHESS?")
+
+        self._over = True
+        return "\n".join(lines)
 
     def _launch(self, parts: list[str]) -> str:
         if len(parts) < 3:
