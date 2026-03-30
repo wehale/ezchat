@@ -12,3 +12,4 @@ server.toml
 registry.toml
 cdk.out/
 cdk.context.json
+docs/internal/
