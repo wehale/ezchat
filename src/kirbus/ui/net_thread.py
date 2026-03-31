@@ -50,6 +50,12 @@ def net_thread(ui, args, stop: threading.Event) -> None:
     # so that each connection only processes messages meant for it.
     _peer_queues: dict[str, _queue.Queue] = {}
 
+    # Messages buffered while waiting for a connection to be established
+    _pending_messages: dict[str, list] = {}
+
+    # Reference to the rendezvous client so outbox dispatcher can trigger connects
+    _rdv_ref: list = [None]
+
     async def _dispatch_outbox() -> None:
         """Read from shared outbox, route each item to the right peer queue(s)."""
         loop = asyncio.get_running_loop()
@@ -79,6 +85,16 @@ def net_thread(ui, args, stop: threading.Event) -> None:
                     q = _peer_queues.get(recipient)
                     if q:
                         q.put(item)
+                    else:
+                        # Peer not connected yet — trigger connection and buffer
+                        async with _connected_lock:
+                            already = recipient in _connected
+                        if not already:
+                            _pending_messages.setdefault(recipient, []).append(item)
+                            _spawn(
+                                _connect_to_peer(recipient, None, _rdv_ref[0]),
+                                name=f"connect-{recipient}",
+                            )
             except Exception:
                 pass
 
@@ -86,6 +102,10 @@ def net_thread(ui, args, stop: threading.Event) -> None:
         """Pump one established connection until it closes."""
         peer_q: _queue.Queue = _queue.Queue()
         _peer_queues[conn.peer_handle] = peer_q
+
+        # Flush any messages that were buffered while waiting for this connection
+        for item in _pending_messages.pop(conn.peer_handle, []):
+            peer_q.put(item)
 
         ui.inbox.put(("system_event", f"connected: {conn.peer_handle}"))
 
@@ -266,6 +286,7 @@ def net_thread(ui, args, stop: threading.Event) -> None:
         from urllib.parse import urlparse
 
         rdv        = RendezvousClient(server, identity)
+        _rdv_ref[0] = rdv
         relay_host = urlparse(server).hostname or "127.0.0.1"
 
         # Fetch relay port, welcome message, and agent menus from server
