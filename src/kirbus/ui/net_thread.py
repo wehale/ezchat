@@ -84,7 +84,15 @@ def net_thread(ui, args, stop: threading.Event) -> None:
             result = await loop.run_in_executor(None, _do)
             # Process replies from the agent
             for reply in result.get("replies", []):
-                ui.inbox.put((agent_handle, reply.get("text", "")))
+                text = reply.get("text", "")
+                if text.startswith("\x00session\x00"):
+                    payload = text.split("\x00", 2)[2]
+                    ui.inbox.put(("__agent_session__", agent_handle, payload))
+                elif text.startswith("\x00menu\x00"):
+                    payload = text.split("\x00", 2)[2]
+                    ui.inbox.put(("__agent_menu__", agent_handle, payload))
+                else:
+                    ui.inbox.put((agent_handle, text))
         except Exception as e:
             ui.inbox.put(("system_event", f"agent error: {e}"))
 

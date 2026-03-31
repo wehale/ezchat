@@ -101,14 +101,21 @@ async def _main(cfg) -> None:
             _agent_menus["my-house"] = menu_data
 
             def _home_handler(sender: str, text: str) -> list[dict]:
+                import json as _json
                 if text.startswith("\x00select\x00"):
                     parts = text.split("\x00")
                     key = parts[2]
                     opening = home.on_select(sender, key)
-                    return [{"to": sender, "text": opening}]
+                    return [
+                        {"to": sender, "text": f"\x00session\x00" + _json.dumps({"key": key, "state": "started"})},
+                        {"to": sender, "text": opening},
+                    ]
                 elif text.startswith("\x00back\x00"):
                     msg = home.on_back(sender)
-                    return [{"to": sender, "text": msg}] if msg else []
+                    replies = [{"to": sender, "text": f"\x00session\x00" + _json.dumps({"state": "ended"})}]
+                    if msg:
+                        replies.append({"to": sender, "text": msg})
+                    return replies
                 else:
                     responses = home.on_message(sender, text)
                     return [{"to": r, "text": t} for r, t in responses]
