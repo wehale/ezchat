@@ -4,7 +4,8 @@ Presents IoT devices as a menu. Selecting a device starts a session
 where you can send commands (on/off, dim, set temp, lock/unlock, etc.).
 
 Behind the scenes, commands are sent to a Matter bridge-app via chip-tool.
-For now, uses a simulated backend until Matter is wired up.
+The Baby Monitor device plays a baby cry through a USB speaker and listens
+for Matter BooleanState events from an E84 running ML inference.
 
 Run with:
     kirbus --agent home --server http://SERVER:8000 --handle my-house
@@ -13,13 +14,19 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import subprocess
 from dataclasses import dataclass, field
+from pathlib import Path
 
 from kirbus.agent.menu import MenuAgent, MenuEntry
 from kirbus.net.connection import Connection
 
 _log = logging.getLogger(__name__)
+
+# Audio config — override with env vars
+AUDIO_DEVICE = os.environ.get("KIRBUS_AUDIO_DEVICE", "plughw:3,0")
+BABYCRY_FILE = os.environ.get("KIRBUS_BABYCRY_FILE", str(Path.home() / "babycry.wav"))
 
 
 # ---------------------------------------------------------------------------
@@ -34,7 +41,9 @@ class Device:
     state: dict = field(default_factory=dict)
 
     def default_state(self) -> None:
-        if self.type == "light":
+        if self.type == "baby_monitor":
+            self.state = {"playing": False, "cry_detected": False, "last_detection": None}
+        elif self.type == "light":
             self.state = {"on": False, "brightness": 100}
         elif self.type == "thermostat":
             self.state = {"mode": "auto", "target": 72, "current": 71}
@@ -48,13 +57,14 @@ class Device:
 
 # The house
 DEVICES = [
-    Device("living_light",  "Living Room Light", "light",      endpoint=2),
-    Device("kitchen_light", "Kitchen Light",     "light",      endpoint=3),
-    Device("bedroom_light", "Bedroom Light",     "light",      endpoint=4),
-    Device("thermostat",    "Thermostat",        "thermostat", endpoint=5),
-    Device("front_lock",    "Front Door Lock",   "lock",       endpoint=6),
-    Device("garage",        "Garage Door",       "garage",     endpoint=7),
-    Device("porch_light",   "Porch Light",       "light",      endpoint=8),
+    Device("baby_monitor",  "Baby Monitor",      "baby_monitor", endpoint=0),
+    Device("living_light",  "Living Room Light",  "light",        endpoint=2),
+    Device("kitchen_light", "Kitchen Light",      "light",        endpoint=3),
+    Device("bedroom_light", "Bedroom Light",      "light",        endpoint=4),
+    Device("thermostat",    "Thermostat",         "thermostat",   endpoint=5),
+    Device("front_lock",    "Front Door Lock",    "lock",         endpoint=6),
+    Device("garage",        "Garage Door",        "garage",       endpoint=7),
+    Device("porch_light",   "Porch Light",        "light",        endpoint=8),
 ]
 
 
@@ -66,8 +76,9 @@ class MatterBackend:
 
     def send_command(self, device: Device, command: str, args: dict) -> str:
         """Send a command to a device. Returns status message."""
-        # Simulated — will be replaced with chip-tool calls
-        if device.type == "light":
+        if device.type == "baby_monitor":
+            return self._handle_baby_monitor(device, command, args)
+        elif device.type == "light":
             return self._handle_light(device, command, args)
         elif device.type == "thermostat":
             return self._handle_thermostat(device, command, args)
@@ -78,6 +89,38 @@ class MatterBackend:
         elif device.type == "switch":
             return self._handle_switch(device, command, args)
         return "Unknown device type."
+
+    def _handle_baby_monitor(self, dev: Device, cmd: str, args: dict) -> str:
+        if cmd == "play":
+            if not Path(BABYCRY_FILE).exists():
+                return f"Audio file not found: {BABYCRY_FILE}"
+            dev.state["playing"] = True
+            dev.state["cry_detected"] = False
+            try:
+                subprocess.Popen(
+                    ["aplay", "-D", AUDIO_DEVICE, BABYCRY_FILE],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+                return "Playing baby cry audio... listening for detection."
+            except Exception as e:
+                dev.state["playing"] = False
+                return f"Failed to play audio: {e}"
+        elif cmd == "stop":
+            dev.state["playing"] = False
+            subprocess.run(["pkill", "-f", f"aplay.*{BABYCRY_FILE}"],
+                           capture_output=True)
+            return "Stopped audio playback."
+        elif cmd == "status":
+            playing = "PLAYING" if dev.state["playing"] else "idle"
+            detected = "YES" if dev.state["cry_detected"] else "no"
+            last = dev.state["last_detection"] or "never"
+            return (
+                f"Baby Monitor: {playing}\n"
+                f"  Cry detected: {detected}\n"
+                f"  Last detection: {last}"
+            )
+        return f"Unknown command: {cmd}. Try: play, stop, status"
 
     def _handle_light(self, dev: Device, cmd: str, args: dict) -> str:
         if cmd == "on":
@@ -182,6 +225,14 @@ class HomeAgent(MenuAgent):
             self._devices[d.key] = d
         self._active: dict[str, str] = {}  # handle → device key
 
+    def broadcast(self, message: str) -> None:
+        """Send a message to all connected clients."""
+        for handle, conn in list(self.connections.items()):
+            try:
+                asyncio.get_event_loop().create_task(conn.send(message))
+            except Exception:
+                pass
+
     def get_title(self) -> str:
         return "my-house"
 
@@ -212,7 +263,16 @@ class HomeAgent(MenuAgent):
 
     def _device_prompt(self, dev: Device) -> str:
         lines = [f"=== {dev.name} ===", ""]
-        if dev.type == "light":
+        if dev.type == "baby_monitor":
+            playing = "PLAYING" if dev.state["playing"] else "idle"
+            detected = "YES" if dev.state["cry_detected"] else "no"
+            last = dev.state["last_detection"] or "never"
+            lines.append(f"Status: {playing}")
+            lines.append(f"Cry detected: {detected}")
+            lines.append(f"Last detection: {last}")
+            lines.append("")
+            lines.append("Commands: play, stop, status")
+        elif dev.type == "light":
             on = "ON" if dev.state["on"] else "OFF"
             lines.append(f"Status: {on}, brightness {dev.state['brightness']}%")
             lines.append("")
@@ -260,6 +320,74 @@ class HomeAgent(MenuAgent):
 
 
 # ---------------------------------------------------------------------------
+# Matter BooleanState subscription listener
+# ---------------------------------------------------------------------------
+class MatterSubscription:
+    """Subscribes to Matter BooleanState events via chip-tool.
+
+    When the E84 detects a baby cry, it sets BooleanState to true.
+    chip-tool subscribe picks this up and we notify all connected clients.
+    """
+
+    def __init__(self, agent: HomeAgent, chip_tool: str, node_id: int, endpoint: int):
+        self._agent = agent
+        self._chip_tool = chip_tool
+        self._node_id = node_id
+        self._endpoint = endpoint
+        self._proc: subprocess.Popen | None = None
+
+    async def start(self) -> None:
+        """Start the subscription in background."""
+        chip_tool = Path(self._chip_tool)
+        if not chip_tool.exists():
+            _log.warning("chip-tool not found at %s — Matter subscription disabled", self._chip_tool)
+            return
+        asyncio.get_event_loop().run_in_executor(None, self._subscribe_loop)
+
+    def _subscribe_loop(self) -> None:
+        """Blocking loop that runs chip-tool subscribe and watches output."""
+        import time
+        while True:
+            try:
+                self._proc = subprocess.Popen(
+                    [
+                        self._chip_tool,
+                        "booleanstate", "subscribe", "state-value",
+                        str(self._node_id), str(self._endpoint),
+                        "1", "30",  # min/max interval seconds
+                    ],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                )
+                for line in self._proc.stdout:
+                    line = line.strip()
+                    if "StateValue" in line and "TRUE" in line.upper():
+                        self._on_cry_detected()
+                    elif "StateValue" in line and "FALSE" in line.upper():
+                        self._on_cry_cleared()
+                self._proc.wait()
+            except Exception as e:
+                _log.debug("Matter subscription error: %s", e)
+            time.sleep(5)  # retry delay
+
+    def _on_cry_detected(self) -> None:
+        from datetime import datetime
+        dev = self._agent._devices.get("baby_monitor")
+        if dev:
+            dev.state["cry_detected"] = True
+            dev.state["last_detection"] = datetime.now().strftime("%H:%M:%S")
+            _log.info("Baby cry detected via Matter!")
+            # Notify all connected clients
+            self._agent.broadcast("ALERT: Baby cry detected!")
+
+    def _on_cry_cleared(self) -> None:
+        dev = self._agent._devices.get("baby_monitor")
+        if dev:
+            dev.state["cry_detected"] = False
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 async def run_home_agent(identity, server: str) -> None:
@@ -291,6 +419,16 @@ async def run_home_agent(identity, server: str) -> None:
     await rdv.register_agent_menu(identity.handle, menu_data)
 
     print(f"home agent online as @{identity.handle}")
+
+    # Start Matter BooleanState subscription if chip-tool is available
+    chip_tool_path = os.environ.get(
+        "KIRBUS_CHIP_TOOL",
+        os.path.expanduser("~/git/connectedhomeip/examples/chip-tool/out/debug/chip-tool"),
+    )
+    matter_node_id = int(os.environ.get("KIRBUS_MATTER_NODE", "1"))
+    matter_endpoint = int(os.environ.get("KIRBUS_MATTER_ENDPOINT", "1"))
+    sub = MatterSubscription(agent, chip_tool_path, matter_node_id, matter_endpoint)
+    asyncio.create_task(sub.start())
 
     async def _relay_loop() -> None:
         import json
