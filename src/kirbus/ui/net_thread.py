@@ -139,7 +139,7 @@ def net_thread(ui, args, stop: threading.Event) -> None:
                         q.put(item)
                     elif recipient in _agent_handles:
                         # Agent peer — send via HTTP proxy (no relay needed)
-                        _spawn(
+                        asyncio.create_task(
                             _send_agent_message(recipient, item[1]),
                             name=f"agent-msg-{recipient}",
                         )
@@ -149,7 +149,7 @@ def net_thread(ui, args, stop: threading.Event) -> None:
                             already = recipient in _connected
                         if not already:
                             _pending_messages.setdefault(recipient, []).append(item)
-                            _spawn(
+                            asyncio.create_task(
                                 _connect_to_peer(recipient, None, _rdv_ref[0]),
                                 name=f"connect-{recipient}",
                             )
@@ -357,8 +357,10 @@ def net_thread(ui, args, stop: threading.Event) -> None:
 
         # Load agent menus immediately (no relay needed)
         import json as _json
+        _agent_handles.clear()
         for agent_handle, menu_data in info.get("agent_menus", {}).items():
             _agent_handles.add(agent_handle)
+            _log.info("agent %s registered for HTTP proxy", agent_handle)
             ui.inbox.put(("__agent_menu__", agent_handle,
                           _json.dumps(menu_data)))
             ui.inbox.put(("__peer_is_agent__", agent_handle))
