@@ -391,20 +391,17 @@ class MatterSubscription:
 # Entry point
 # ---------------------------------------------------------------------------
 async def run_home_agent(identity, server: str) -> None:
-    """Connect to the mesh and handle home control sessions."""
+    """Connect to the mesh and handle home control sessions via HTTP proxy."""
     from kirbus.net.rendezvous_client import RendezvousClient
-    from kirbus.net.connection import accept_peer
-    from urllib.parse import urlparse
+    import json
+    import urllib.request
 
     agent = HomeAgent()
 
-    rdv        = RendezvousClient(server, identity)
-    relay_host = urlparse(server).hostname or "127.0.0.1"
-    info = await rdv.server_info()
-    relay_port = info.get("relay_port", 9001)
+    rdv = RendezvousClient(server, identity)
 
     # Register with rendezvous
-    pub_ip   = await rdv.my_public_ip() or "127.0.0.1"
+    pub_ip = await rdv.my_public_ip() or "127.0.0.1"
     endpoint = f"{pub_ip}:0"
     await rdv.register(endpoint)
     rdv.start_keepalive(endpoint)
@@ -430,28 +427,64 @@ async def run_home_agent(identity, server: str) -> None:
     sub = MatterSubscription(agent, chip_tool_path, matter_node_id, matter_endpoint)
     asyncio.create_task(sub.start())
 
-    async def _relay_loop() -> None:
-        import json
+    def _send_reply(to: str, text: str) -> None:
+        """Send a reply to a client via the server HTTP proxy."""
+        try:
+            data = json.dumps({"from": identity.handle, "to": to, "text": text}).encode()
+            req = urllib.request.Request(
+                f"{server}/agent/reply",
+                data=data,
+                headers={"Content-Type": "application/json"},
+            )
+            urllib.request.urlopen(req, timeout=5)
+        except Exception as e:
+            _log.debug("reply send failed: %s", e)
+
+    async def _poll_loop() -> None:
+        """Long-poll the server for incoming messages from clients."""
+        loop = asyncio.get_event_loop()
         while True:
             try:
-                reader, writer = await asyncio.open_connection(relay_host, relay_port)
-                writer.write(
-                    (json.dumps({"role": "wait", "handle": identity.handle}) + "\n").encode()
-                )
-                await writer.drain()
-                line = await reader.readline()
-                if not line or not line.strip():
-                    writer.close()
+                def _fetch():
+                    try:
+                        req = urllib.request.Request(f"{server}/agent/{identity.handle}/recv")
+                        resp = urllib.request.urlopen(req, timeout=35)
+                        if resp.status == 204:
+                            return None
+                        return json.loads(resp.read().decode())
+                    except Exception:
+                        return None
+
+                msg = await loop.run_in_executor(None, _fetch)
+                if not msg or msg.get("empty"):
                     continue
-                resp = json.loads(line.decode().strip())
-                if not resp.get("ok"):
-                    writer.close()
-                    continue
-                conn = await accept_peer(reader, writer, identity)
-                asyncio.create_task(agent.handle_conn(conn))
+
+                sender = msg["from"]
+                text = msg["text"]
+
+                # Route through the agent's protocol handler
+                if text.startswith("\x00select\x00"):
+                    parts = text.split("\x00")
+                    key = parts[2]
+                    opponent = parts[4] if len(parts) > 4 else None
+                    opening = agent.on_select(sender, key, opponent)
+                    await loop.run_in_executor(None, _send_reply, sender, opening)
+
+                elif text.startswith("\x00back\x00"):
+                    msg_back = agent.on_back(sender)
+                    if msg_back:
+                        await loop.run_in_executor(None, _send_reply, sender, msg_back)
+
+                else:
+                    # Regular message — forward to session
+                    responses = agent.on_message(sender, text)
+                    for recipient, reply_text in responses:
+                        await loop.run_in_executor(None, _send_reply, recipient, reply_text)
+
             except asyncio.CancelledError:
                 return
-            except Exception:
+            except Exception as e:
+                _log.debug("poll error: %s", e)
                 await asyncio.sleep(1)
 
-    await _relay_loop()
+    await _poll_loop()

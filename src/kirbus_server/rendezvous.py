@@ -40,6 +40,11 @@ _registry: dict[str, dict[str, Any]] = {}
 # Agent menus: handle → menu JSON (title, entries)
 _agent_menus: dict[str, dict] = {}
 
+# Agent message queues: agent_handle → asyncio.Queue of {from, text}
+_agent_inboxes: dict[str, Any] = {}
+# Client reply queues: client_handle → asyncio.Queue of {from, text}
+_client_replies: dict[str, Any] = {}
+
 # Metrics
 _metrics = {
     "total_connections": 0,
@@ -255,6 +260,76 @@ async def handle_agent_menu(request: web.Request) -> web.Response:
     return web.json_response({"ok": True})
 
 
+async def handle_agent_send(request: web.Request) -> web.Response:
+    """Client sends a message to an agent (no relay needed)."""
+    import asyncio as _aio
+    try:
+        body = await request.json()
+        agent = body["to"]
+        sender = body["from"]
+        text = body["text"]
+    except (KeyError, ValueError):
+        return web.json_response({"error": "bad request"}, status=400)
+
+    if agent not in _agent_menus:
+        return web.json_response({"error": "agent not found"}, status=404)
+
+    # Create inbox queue if needed
+    if agent not in _agent_inboxes:
+        _agent_inboxes[agent] = _aio.Queue()
+
+    await _agent_inboxes[agent].put({"from": sender, "text": text})
+    return web.json_response({"ok": True})
+
+
+async def handle_agent_recv(request: web.Request) -> web.Response:
+    """Agent long-polls for incoming messages."""
+    import asyncio as _aio
+    handle = request.match_info["handle"]
+
+    if handle not in _agent_inboxes:
+        _agent_inboxes[handle] = _aio.Queue()
+
+    try:
+        msg = await _aio.wait_for(_agent_inboxes[handle].get(), timeout=30)
+        return web.json_response(msg)
+    except _aio.TimeoutError:
+        return web.json_response({"empty": True}, status=204)
+
+
+async def handle_agent_reply(request: web.Request) -> web.Response:
+    """Agent sends a reply to a client."""
+    import asyncio as _aio
+    try:
+        body = await request.json()
+        agent = body["from"]
+        client = body["to"]
+        text = body["text"]
+    except (KeyError, ValueError):
+        return web.json_response({"error": "bad request"}, status=400)
+
+    if client not in _client_replies:
+        _client_replies[client] = _aio.Queue()
+
+    await _client_replies[client].put({"from": agent, "text": text})
+    return web.json_response({"ok": True})
+
+
+async def handle_client_recv(request: web.Request) -> web.Response:
+    """Client long-polls for agent replies."""
+    import asyncio as _aio
+    handle = request.match_info["handle"]
+
+    if handle not in _client_replies:
+        _client_replies[handle] = _aio.Queue()
+
+    try:
+        msg = await _aio.wait_for(_client_replies[handle].get(), timeout=30)
+        return web.json_response(msg)
+    except _aio.TimeoutError:
+        return web.json_response({"empty": True}, status=204)
+
+
 async def handle_info(request: web.Request) -> web.Response:
     """Return server metadata (relay port, welcome message, agent menus)."""
     data = {"relay_port": request.app["relay_port"]}
@@ -293,4 +368,8 @@ def make_app(
     app.router.add_get( "/info",             handle_info)
     app.router.add_get( "/stats",            handle_stats)
     app.router.add_post("/agent-menu",       handle_agent_menu)
+    app.router.add_post("/agent/send",       handle_agent_send)
+    app.router.add_get( "/agent/{handle}/recv", handle_agent_recv)
+    app.router.add_post("/agent/reply",      handle_agent_reply)
+    app.router.add_get( "/client/{handle}/recv", handle_client_recv)
     return app

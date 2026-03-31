@@ -56,6 +56,58 @@ def net_thread(ui, args, stop: threading.Event) -> None:
     # Reference to the rendezvous client so outbox dispatcher can trigger connects
     _rdv_ref: list = [None]
 
+    # Agent handles — agents use HTTP proxy instead of relay
+    _agent_handles: set[str] = set()
+
+    async def _send_agent_message(agent_handle: str, text: str) -> None:
+        """Send a message to an agent via HTTP proxy on the server."""
+        import json as _json
+        import urllib.request
+        try:
+            data = _json.dumps({
+                "to": agent_handle,
+                "from": identity.handle,
+                "text": text,
+            }).encode()
+            req = urllib.request.Request(
+                f"{server}/agent/send",
+                data=data,
+                headers={"Content-Type": "application/json"},
+            )
+            loop = asyncio.get_event_loop()
+            await loop.run_in_executor(None, lambda: urllib.request.urlopen(req, timeout=5))
+        except Exception as e:
+            _log.debug("agent send failed: %s", e)
+
+    async def _poll_agent_replies() -> None:
+        """Long-poll the server for agent replies."""
+        import json as _json
+        import urllib.request
+        loop = asyncio.get_event_loop()
+        while not stop.is_set():
+            try:
+                def _fetch():
+                    try:
+                        req = urllib.request.Request(f"{server}/client/{identity.handle}/recv")
+                        resp = urllib.request.urlopen(req, timeout=35)
+                        if resp.status == 204:
+                            return None
+                        return _json.loads(resp.read().decode())
+                    except Exception:
+                        return None
+
+                msg = await loop.run_in_executor(None, _fetch)
+                if not msg or msg.get("empty"):
+                    continue
+
+                agent = msg["from"]
+                text = msg["text"]
+                ui.inbox.put((agent, text))
+            except asyncio.CancelledError:
+                return
+            except Exception:
+                await asyncio.sleep(1)
+
     async def _dispatch_outbox() -> None:
         """Read from shared outbox, route each item to the right peer queue(s)."""
         loop = asyncio.get_running_loop()
@@ -85,6 +137,12 @@ def net_thread(ui, args, stop: threading.Event) -> None:
                     q = _peer_queues.get(recipient)
                     if q:
                         q.put(item)
+                    elif recipient in _agent_handles:
+                        # Agent peer — send via HTTP proxy (no relay needed)
+                        _spawn(
+                            _send_agent_message(recipient, item[1]),
+                            name=f"agent-msg-{recipient}",
+                        )
                     else:
                         # Peer not connected yet — trigger connection and buffer
                         async with _connected_lock:
@@ -300,6 +358,7 @@ def net_thread(ui, args, stop: threading.Event) -> None:
         # Load agent menus immediately (no relay needed)
         import json as _json
         for agent_handle, menu_data in info.get("agent_menus", {}).items():
+            _agent_handles.add(agent_handle)
             ui.inbox.put(("__agent_menu__", agent_handle,
                           _json.dumps(menu_data)))
             ui.inbox.put(("__peer_is_agent__", agent_handle))
@@ -385,13 +444,18 @@ def net_thread(ui, args, stop: threading.Event) -> None:
 
         accept_task = _spawn(_accept_loop(), name="accept-loop")
 
-        # Connect to all currently online peers
+        # Start agent reply polling if there are agents
+        if _agent_handles:
+            _spawn(_poll_agent_replies(), name="agent-reply-poll")
+
+        # Connect to all currently online peers (skip agents — they use HTTP proxy)
         existing = await rdv.peers()
         for peer in existing:
-            _spawn(
-                _connect_to_peer(peer["handle"], peer.get("endpoint"), rdv),
-                name=f"connect-{peer['handle']}",
-            )
+            if peer["handle"] not in _agent_handles:
+                _spawn(
+                    _connect_to_peer(peer["handle"], peer.get("endpoint"), rdv),
+                    name=f"connect-{peer['handle']}",
+                )
 
         # Poll for new peers periodically and reconnect to any that restarted
         async def _poll_loop() -> None:
@@ -401,6 +465,8 @@ def net_thread(ui, args, stop: threading.Event) -> None:
                     current = await rdv.peers()
                     for peer in current:
                         ph = peer["handle"]
+                        if ph in _agent_handles:
+                            continue  # agents use HTTP proxy
                         async with _connected_lock:
                             already = ph in _connected
                         if not already:
