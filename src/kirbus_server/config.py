@@ -34,6 +34,7 @@ class ServerConfig:
     log_level:      str = "info"
     welcome:        str = ""       # shown to all clients on connect
     secret_message: str = ""       # shown only after successful auth
+    agents:         list[str] = field(default_factory=list)  # e.g. ["home", "games"]
     registry:       RegistrySection = field(default_factory=RegistrySection)
     auth:           AuthSection     = field(default_factory=AuthSection)
 
@@ -55,6 +56,7 @@ def load_server_config(path: Path | None = None) -> ServerConfig:
         ttl            = s.get("ttl",            60),
         log_level      = s.get("log_level",      "info"),
         welcome        = s.get("welcome",        ""),
+        agents         = s.get("agents",         []),
         secret_message = s.get("secret_message", ""),
         registry   = RegistrySection(
             url         = r.get("url",         ""),

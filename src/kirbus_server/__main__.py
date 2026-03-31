@@ -86,6 +86,36 @@ async def _main(cfg) -> None:
         )
         log.info("registering with %s as %r", cfg.registry.url, cfg.registry.name)
 
+    # --- in-process agents ---
+    for agent_name in cfg.agents:
+        if agent_name == "home":
+            from kirbus.agent.home_agent import HomeAgent
+            from kirbus_server.rendezvous import register_agent_handler, _agent_menus
+            home = HomeAgent()
+            # Register menu
+            entries = home.get_entries()
+            menu_data = {
+                "title": home.get_title(),
+                "entries": [{"key": e.key, "label": e.label, "type": e.type} for e in entries],
+            }
+            _agent_menus["my-house"] = menu_data
+
+            def _home_handler(sender: str, text: str) -> list[dict]:
+                if text.startswith("\x00select\x00"):
+                    parts = text.split("\x00")
+                    key = parts[2]
+                    opening = home.on_select(sender, key)
+                    return [{"to": sender, "text": opening}]
+                elif text.startswith("\x00back\x00"):
+                    msg = home.on_back(sender)
+                    return [{"to": sender, "text": msg}] if msg else []
+                else:
+                    responses = home.on_message(sender, text)
+                    return [{"to": r, "text": t} for r, t in responses]
+
+            register_agent_handler("my-house", _home_handler)
+            log.info("in-process agent: home (my-house)")
+
     log.info("kirbus-server ready  (ttl=%ds)", cfg.ttl)
 
     try:

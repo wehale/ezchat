@@ -16,11 +16,14 @@ Direct (no --server):
 from __future__ import annotations
 
 import asyncio
+import logging
 import queue as _queue
 import threading
 
 from kirbus.crypto.keys import load_or_create_identity
 from kirbus.net.connection import connect_to_peer, accept_peer
+
+_log = logging.getLogger(__name__)
 
 _RETRY_DELAY    = 5    # seconds between reconnect attempts
 _DIRECT_TIMEOUT = 3    # seconds before falling back to relay
@@ -60,7 +63,7 @@ def net_thread(ui, args, stop: threading.Event) -> None:
     _agent_handles: set[str] = set()
 
     async def _send_agent_message(agent_handle: str, text: str) -> None:
-        """Send a message to an agent via HTTP proxy on the server."""
+        """Send a message to an agent via HTTP on the server. Response is synchronous."""
         import json as _json
         import urllib.request
         try:
@@ -75,38 +78,15 @@ def net_thread(ui, args, stop: threading.Event) -> None:
                 headers={"Content-Type": "application/json"},
             )
             loop = asyncio.get_event_loop()
-            await loop.run_in_executor(None, lambda: urllib.request.urlopen(req, timeout=5))
+            def _do():
+                resp = urllib.request.urlopen(req, timeout=10)
+                return _json.loads(resp.read().decode())
+            result = await loop.run_in_executor(None, _do)
+            # Process replies from the agent
+            for reply in result.get("replies", []):
+                ui.inbox.put((agent_handle, reply.get("text", "")))
         except Exception as e:
-            _log.debug("agent send failed: %s", e)
-
-    async def _poll_agent_replies() -> None:
-        """Long-poll the server for agent replies."""
-        import json as _json
-        import urllib.request
-        loop = asyncio.get_event_loop()
-        while not stop.is_set():
-            try:
-                def _fetch():
-                    try:
-                        req = urllib.request.Request(f"{server}/client/{identity.handle}/recv")
-                        resp = urllib.request.urlopen(req, timeout=35)
-                        if resp.status == 204:
-                            return None
-                        return _json.loads(resp.read().decode())
-                    except Exception:
-                        return None
-
-                msg = await loop.run_in_executor(None, _fetch)
-                if not msg or msg.get("empty"):
-                    continue
-
-                agent = msg["from"]
-                text = msg["text"]
-                ui.inbox.put((agent, text))
-            except asyncio.CancelledError:
-                return
-            except Exception:
-                await asyncio.sleep(1)
+            ui.inbox.put(("system_event", f"agent error: {e}"))
 
     async def _dispatch_outbox() -> None:
         """Read from shared outbox, route each item to the right peer queue(s)."""
@@ -445,10 +425,6 @@ def net_thread(ui, args, stop: threading.Event) -> None:
                     pass
 
         accept_task = _spawn(_accept_loop(), name="accept-loop")
-
-        # Start agent reply polling if there are agents
-        if _agent_handles:
-            _spawn(_poll_agent_replies(), name="agent-reply-poll")
 
         # Connect to all currently online peers (skip agents — they use HTTP proxy)
         existing = await rdv.peers()
