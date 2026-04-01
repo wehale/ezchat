@@ -89,7 +89,7 @@ async def _main(cfg) -> None:
     # --- in-process agents ---
     for agent_name in cfg.agents:
         if agent_name == "home":
-            from kirbus.agent.home_agent import HomeAgent
+            from kirbus.agent.home_agent import HomeAgent, handle_device_event
             from kirbus_server.rendezvous import register_agent_handler, _agent_menus
             home = HomeAgent()
             # Register menu
@@ -99,6 +99,9 @@ async def _main(cfg) -> None:
                 "entries": [{"key": e.key, "label": e.label, "type": e.type} for e in entries],
             }
             _agent_menus["my-house"] = menu_data
+
+            # Register HTTP device event handler (E84 firmware webhook)
+            app["device_event_handler"] = lambda body: handle_device_event(home, body)
 
             def _home_handler(sender: str, text: str) -> list[dict]:
                 import json as _json

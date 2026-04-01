@@ -401,6 +401,39 @@ class MatterSubscription:
 
 
 # ---------------------------------------------------------------------------
+# HTTP device event intake (firmware webhook)
+# ---------------------------------------------------------------------------
+def handle_device_event(agent: HomeAgent, body: dict) -> str:
+    """Process an event from an external device (e.g. E84 firmware via HTTP POST).
+
+    Expected body: {"event": "baby_cry", "state": true/false, "confidence": 0.99, ...}
+    Returns a status message.
+    """
+    event = body.get("event")
+    state = body.get("state")
+    confidence = body.get("confidence", 0.0)
+
+    if event != "baby_cry":
+        return f"unknown event: {event}"
+
+    dev = agent._devices.get("baby_monitor")
+    if not dev:
+        return "baby_monitor device not found"
+
+    if state:
+        from datetime import datetime
+        dev.state["cry_detected"] = True
+        dev.state["last_detection"] = datetime.now().strftime("%H:%M:%S")
+        _log.info("Baby cry detected via HTTP webhook (confidence=%.4f)", confidence)
+        agent.broadcast(f"ALERT: Baby cry detected! (confidence {confidence:.2f})")
+        return "cry_detected"
+    else:
+        dev.state["cry_detected"] = False
+        _log.info("Baby cry cleared via HTTP webhook")
+        return "cry_cleared"
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 async def run_home_agent(identity, server: str) -> None:

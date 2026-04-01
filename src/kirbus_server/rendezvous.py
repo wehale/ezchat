@@ -289,6 +289,35 @@ async def handle_agent_send(request: web.Request) -> web.Response:
         return web.json_response({"error": str(e)}, status=500)
 
 
+async def handle_device_event(request: web.Request) -> web.Response:
+    """Accept events from external devices (e.g. E84 baby-cry firmware).
+
+    POST /device/event
+    Body: {"event": "baby_cry", "state": true, "confidence": 0.99, ...}
+    """
+    try:
+        body = await request.json()
+    except ValueError:
+        return web.json_response({"error": "invalid JSON"}, status=400)
+
+    event = body.get("event")
+    if not event:
+        return web.json_response({"error": "missing 'event' field"}, status=400)
+
+    handler = request.app.get("device_event_handler")
+    if not handler:
+        _log.warning("device event received but no handler registered")
+        return web.json_response({"error": "no handler"}, status=503)
+
+    try:
+        result = handler(body)
+        _log.info("device event: %s state=%s → %s", event, body.get("state"), result)
+        return web.json_response({"ok": True, "result": result})
+    except Exception as e:
+        _log.error("device event handler error: %s", e)
+        return web.json_response({"error": str(e)}, status=500)
+
+
 async def handle_info(request: web.Request) -> web.Response:
     """Return server metadata (relay port, welcome message, agent menus)."""
     data = {"relay_port": request.app["relay_port"]}
@@ -328,4 +357,5 @@ def make_app(
     app.router.add_get( "/stats",            handle_stats)
     app.router.add_post("/agent-menu",       handle_agent_menu)
     app.router.add_post("/agent/send",       handle_agent_send)
+    app.router.add_post("/device/event",      handle_device_event)
     return app
