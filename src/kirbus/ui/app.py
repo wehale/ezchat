@@ -322,6 +322,11 @@ class UI(DrawMixin, InputMixin):
                     self.agent_peers.add(text)
                     self.peers = [(h, on) for h, on in self.peers if h != text]
 
+                elif sender == "__baby_cry_event__":
+                    if self.agent_session == "baby_monitor":
+                        ts, date = self._now()
+                        self.messages.append(Message(ts, "my-house", text, "chat", peer="my-house", date=date))
+
                 elif sender == "__agent_menu__":
                     import json
                     agent_handle = text

@@ -494,7 +494,8 @@ def net_thread(ui, args, stop: threading.Event) -> None:
                                 msg = f"🚨 BABY CRY DETECTED (confidence {conf:.2f})"
                             else:
                                 msg = f"✅ Baby cry ended (confidence {conf:.2f})"
-                            ui.inbox.put(("system_event", msg))
+                            # Route to TUI — app.py will display appropriately
+                            ui.inbox.put(("__baby_cry_event__", msg))
                 except Exception as e:
                     ui.inbox.put(("system_event", f"[notification poll error: {e}]"))
                     await asyncio.sleep(5)

@@ -129,7 +129,11 @@ class MatterBackend:
                 f"  Cry detected: {detected}\n"
                 f"  Last detection: {last}"
             )
-        return f"Unknown command: {cmd}. Try: status"
+        elif cmd == "clear":
+            dev.state["cry_detected"] = False
+            dev.state["last_detection"] = None
+            return "Baby Monitor: history cleared"
+        return f"Unknown command: {cmd}. Try: status, clear"
 
     def _handle_light(self, dev: Device, cmd: str, args: dict) -> str:
         if cmd == "on":
@@ -285,6 +289,8 @@ class HomeAgent(MenuAgent):
             lines.append(f"Last detection: {last}")
             lines.append("")
             lines.append("Waiting for baby cry detection from E84...")
+            lines.append("")
+            lines.append("Commands: status, clear")
         elif dev.type == "light":
             on = "ON" if dev.state["on"] else "OFF"
             lines.append(f"Status: {on}, brightness {dev.state['brightness']}%")
