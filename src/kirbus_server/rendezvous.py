@@ -301,10 +301,13 @@ async def handle_device_event(request: web.Request) -> web.Response:
     POST /device/event
     Body: {"event": "baby_cry", "state": true, "confidence": 0.99, ...}
     """
+    import json
     try:
-        body = await request.json()
-    except ValueError:
-        return web.json_response({"error": "invalid JSON"}, status=400)
+        raw = await request.read()
+        body = json.loads(raw)
+    except Exception as e:
+        _log.warning("device event: failed to parse body: %s (raw=%r)", e, raw[:200] if raw else b"")
+        return web.json_response({"error": f"invalid JSON: {e}"}, status=400)
 
     event = body.get("event")
     if not event:

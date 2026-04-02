@@ -471,6 +471,7 @@ def net_thread(ui, args, stop: threading.Event) -> None:
             import urllib.request
             _since = [0.0]  # mutable container for closure
             _log.info("notification poll started → %s/agent/notifications", server)
+            ui.inbox.put(("system_event", f"[notifications: polling {server}]"))
             while not stop.is_set():
                 try:
                     loop = asyncio.get_event_loop()
